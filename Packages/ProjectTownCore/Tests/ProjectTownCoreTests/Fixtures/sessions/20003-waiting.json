@@ -1,0 +1,10 @@
+{
+  "pid": 20003,
+  "sessionId": "sess-waiting",
+  "cwd": "/tmp/fixture/alpha",
+  "startedAt": 1792924000000,
+  "status": "waiting",
+  "waitingFor": "input needed",
+  "updatedAt": 1792924500000,
+  "statusUpdatedAt": 1792924500000
+}

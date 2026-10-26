@@ -1,0 +1,12 @@
+{
+  "pid": 20004,
+  "sessionId": "sess-extra",
+  "cwd": "/tmp/fixture/alpha",
+  "status": "idle",
+  "name": "Extra fields",
+  "peerProtocol": 3,
+  "peerFeatures": ["a", "b"],
+  "messagingSocketPath": "/tmp/fixture/socket",
+  "bridgeSessionId": "bridge-1",
+  "someFutureObject": { "nested": [1, 2, 3] }
+}

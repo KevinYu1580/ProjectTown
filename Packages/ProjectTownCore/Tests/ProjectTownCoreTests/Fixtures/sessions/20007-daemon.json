@@ -1,0 +1,7 @@
+{
+  "pid": 20007,
+  "sessionId": "sess-daemon",
+  "cwd": "/tmp/fixture/alpha",
+  "kind": "daemon",
+  "status": "busy"
+}

@@ -1,0 +1,16 @@
+{
+  "pid": 10434,
+  "sessionId": "941a5c32-62ef-4cc4-ae6d-ee017a605e1f",
+  "cwd": "/Users/me/projects/demo",
+  "startedAt": 1792924125747,
+  "procStart": "Sun Oct 25 10:28:45 2026",
+  "version": "2.1.308",
+  "kind": "interactive",
+  "entrypoint": "claude-desktop",
+  "name": "Demo session",
+  "nameSource": "user",
+  "nameSince": 1792924126412,
+  "status": "idle",
+  "updatedAt": 1792924794503,
+  "statusUpdatedAt": 1792924794503
+}

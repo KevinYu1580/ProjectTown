@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check MARKETING_VERSION matches tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          marketing="$(sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*"\{0,1\}\([^"[:space:]]*\)"\{0,1\}[[:space:]]*$/\1/p' project.yml | head -n 1)"
+          if [ "$marketing" != "$version" ]; then
+            echo "::error::MARKETING_VERSION ($marketing) in project.yml does not match tag ($TAG)"
+            exit 1
+          fi
+
+      - run: brew install xcodegen
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+
+      - run: xcodegen generate
+
+      - name: Build universal app (ad-hoc signed)
+        run: |
+          xcodebuild -project ProjectTown.xcodeproj -scheme ProjectTown -configuration Release \
+            -derivedDataPath build/DerivedData \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY="-" \
+            build
+
+      - name: Package zip
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          ditto -c -k --keepParent build/DerivedData/Build/Products/Release/ProjectTown.app "ProjectTown-${TAG}.zip"
+
+      - name: Extract release notes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: scripts/changelog-section.sh "$TAG" > notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" "ProjectTown-${TAG}.zip" --notes-file notes.md --title "$TAG"

@@ -1,0 +1,7 @@
+{
+  "pid": 20002,
+  "sessionId": "sess-unknown-status",
+  "cwd": "/tmp/fixture/beta",
+  "status": "thinking-really-hard",
+  "name": "Odd status"
+}
