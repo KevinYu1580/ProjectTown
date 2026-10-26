@@ -1,11 +1,13 @@
 import AppKit
+import Combine
 import ProjectTownCore
 import WebKit
 import os
 
-/// Borderless so it has no chrome; `canBecomeKey` is overridden for M3's camera edit mode (HANDOFF §7.3).
+/// Borderless so it has no chrome; it can only become key during the camera edit mode (HANDOFF §7.3).
 final class WallpaperWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
+    var allowsKey = false
+    override var canBecomeKey: Bool { allowsKey }
 }
 
 /// Forwards script messages without letting WKUserContentController retain the controller.
@@ -23,7 +25,7 @@ private final class WeakScriptHandler: NSObject, WKScriptMessageHandler {
 
 /// Owns the desktop-level window and its WKWebView, the Swift side of the bridge (HANDOFF §6) and the pause logic (§7.2).
 @MainActor
-final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
+final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate {
     private static let log = Logger(subsystem: "io.github.kevinyu1580.ProjectTown", category: "WallpaperWindowController")
 
     private let window: WallpaperWindow
@@ -42,8 +44,13 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
     private var occluded: Bool { !window.occlusionState.contains(.visible) }
     private var screensAsleep = false
     private var sessionResigned = false
-    private(set) var userPaused = false
+    @Published private(set) var userPaused = false
     private var sentPaused = false
+
+    private let desktopLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+    private(set) var editingCamera = false
+    /// Called with the camera the scene saved when the user finished editing.
+    var onCameraSaved: ((CameraBase) -> Void)?
 
     init(config: AppConfig, cycleEpochMs: Int64) {
         self.cycleEpochMs = cycleEpochMs
@@ -58,7 +65,7 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
         #endif
 
         window = WallpaperWindow(
-            contentRect: Self.targetScreen(displayUUID: config.displayUUID)?.frame ?? .zero,
+            contentRect: Displays.screen(for: config.displayUUID)?.frame ?? .zero,
             styleMask: .borderless, backing: .buffered, defer: false
         )
         super.init()
@@ -68,7 +75,7 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
 
         window.isReleasedWhenClosed = false
         // §7.1 acceptance (desktop icons stay above the town and clickable) needs a real-desktop check.
-        window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+        window.level = desktopLevel
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.isOpaque = true
@@ -113,8 +120,40 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
 
     /// Reloads the page itself, so a wedged scene recovers; `ready` re-sends settings, state and pause.
     func reloadScene() {
+        endCameraEdit()
         ready = false
         loadScene()
+    }
+
+    // MARK: Camera edit (§7.3)
+
+    /// Raises the window above normal windows so it can take mouse and keyboard, then starts the scene's edit mode.
+    /// The window drops back to the desktop in `endCameraEdit`, on the scene's `cameraEditClosed`.
+    func enterCameraEdit() {
+        guard ready, !editingCamera else { return }
+        editingCamera = true
+        window.allowsKey = true
+        window.level = .floating
+        window.ignoresMouseEvents = false
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        updatePause()
+        run("window.projectTown.enterCameraEdit()")
+    }
+
+    private func endCameraEdit() {
+        guard editingCamera else { return }
+        editingCamera = false
+        window.allowsKey = false
+        window.level = desktopLevel
+        window.ignoresMouseEvents = true
+        updatePause()
+        // Give keyboard focus back: to the settings window if it is open, otherwise to the previously active app.
+        if let other = NSApp.windows.first(where: { $0 !== window && $0.isVisible && $0.styleMask.contains(.titled) }) {
+            other.makeKeyAndOrderFront(nil)
+        } else {
+            NSApp.deactivate()
+        }
     }
 
     // MARK: Loading and bridge
@@ -139,6 +178,7 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
         }
         switch type {
         case "ready":
+            endCameraEdit()  // a freshly loaded page is never in edit mode
             ready = true
             sentSettings = nil
             sentPaused = false
@@ -148,8 +188,16 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
             measureFrameRateIfRequested()
         case "error":
             Self.log.error("Scene error: \(body["message"] as? String ?? "?", privacy: .public)")
-        case "cameraSaved", "cameraEditClosed":
-            Self.log.info("Ignoring \(type, privacy: .public) until M3")
+        case "cameraSaved":
+            if let raw = body["camera"], JSONSerialization.isValidJSONObject(raw),
+               let data = try? JSONSerialization.data(withJSONObject: raw),
+               let camera = try? JSONDecoder().decode(CameraBase.self, from: data) {
+                onCameraSaved?(camera)
+            } else {
+                Self.log.error("Malformed cameraSaved payload")
+            }
+        case "cameraEditClosed":
+            endCameraEdit()
         default:
             Self.log.error("Unknown message type \(type, privacy: .public)")
         }
@@ -225,9 +273,10 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
     }
 
     /// Calls `setPaused` only when the combined value differs from what the scene last heard.
+    /// Camera editing always renders, even if the user paused from the menu.
     private func updatePause() {
         guard ready else { return }
-        let paused = occluded || screensAsleep || sessionResigned || userPaused
+        let paused = !editingCamera && (occluded || screensAsleep || sessionResigned || userPaused)
         guard paused != sentPaused else { return }
         sentPaused = paused
         run("window.projectTown.setPaused(\(paused))")
@@ -244,22 +293,8 @@ final class WallpaperWindowController: NSObject, WKScriptMessageHandler, WKNavig
     }
 
     private func reframe() {
-        guard let screen = Self.targetScreen(displayUUID: displayUUID) else { return }
+        guard let screen = Displays.screen(for: displayUUID) else { return }
         window.setFrame(screen.frame, display: true)
-    }
-
-    private static func targetScreen(displayUUID: String?) -> NSScreen? {
-        if let displayUUID,
-           let match = NSScreen.screens.first(where: { uuid(of: $0) == displayUUID }) {
-            return match
-        }
-        return NSScreen.main ?? NSScreen.screens.first
-    }
-
-    private static func uuid(of screen: NSScreen) -> String? {
-        guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
-              let cfUUID = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue() else { return nil }
-        return CFUUIDCreateString(nil, cfUUID) as String
     }
 
     // MARK: Dev measurement (HANDOFF §8.9)
