@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { PAL, accentTone, mutedAccent } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -22,14 +23,14 @@ const FACES: Face[] = ['z+', 'x+', 'z-', 'x-']
 const CLOCK_HALF = 2.6 // clock stage half width
 
 export const build: BuildFn = (color) => {
-  const stone = material(0xb59a78)
-  const shaft = material(0xc7b08e)
-  const trim = material(0xebe2cd)
-  const dark = material(0x333844)
-  const gold = material(0xd9a93a, { roughness: 0.55 })
-  const wood = material(0x8a6a4a)
-  const accent = material(color)
-  const roofMat = material(new THREE.Color(color).multiplyScalar(0.7))
+  const stone = material(PAL.sand[1])
+  const shaft = material(PAL.sand[2])
+  const trim = material(PAL.cream[1])
+  const dark = material(PAL.frame)
+  const gold = material(PAL.gold, { roughness: 0.55 })
+  const wood = material(PAL.wood[1])
+  const accent = material(accentTone(color))
+  const roofMat = material(mutedAccent(color))
 
   // Own materials: emissive strength follows the lit state and the light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })

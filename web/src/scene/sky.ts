@@ -2,23 +2,25 @@
 import * as THREE from 'three'
 import type { LightInfo } from '../time/dayNight'
 import type { TownLayout } from './layout'
+import { SKY } from './palette'
 
 const C = (hex: number): THREE.Color => new THREE.Color(hex)
 
-// Palette endpoints: level 0 (night) and level 1 (day).
-const BG = [C(0x101c38), C(0xb7cbdc)] as const
-const HEMI_SKY = [C(0x6c80d2), C(0xe3edf8)] as const
-const HEMI_GROUND = [C(0x2b3052), C(0x8d8572)] as const
-const SUN = [C(0x9ab0ff), C(0xfff0d8)] as const
+// Palette endpoints (palette.ts): level 0 (night) and level 1 (day).
+const pair = ([night, day]: readonly [number, number]) => [C(night), C(day)] as const
+const BG = pair(SKY.bg)
+const HEMI_SKY = pair(SKY.hemiSky)
+const HEMI_GROUND = pair(SKY.hemiGround)
+const SUN = pair(SKY.sun)
 // Warm tint mixed in around the middle of a transition.
-const DUSK_SKY = C(0xf7a055)
-const DAWN_SKY = C(0xf7a592)
+const DUSK_SKY = C(SKY.dusk)
+const DAWN_SKY = C(SKY.dawn)
 // Keep the sun's green channel high: a deep orange sun turns green ground olive.
-const WARM_SUN = C(0xffcf9a)
+const WARM_SUN = C(SKY.warmSun)
 // Transition skies pass through these so blue and orange never mix into grey: peach on the day side, mauve on the night side.
-const PEACH = C(0xf3c9a5)
-const MAUVE = C(0x8a5a86)
-const WARM_FILL = C(0xffc89e)
+const PEACH = C(SKY.peach)
+const MAUVE = C(SKY.mauve)
+const WARM_FILL = C(SKY.warmFill)
 
 // The sun always comes from the front-left of the default camera so +Z facades are lit and shadows fall right-back.
 const SUN_AZIMUTH = new THREE.Vector2(-0.45, 0.55).normalize()
@@ -79,16 +81,17 @@ export class Sky {
       .lerp(tint, THREE.MathUtils.smoothstep(warm, 0.3, 1) * 0.9)
     this.fog.color.copy(this.bg)
 
-    mix(this.hemi.color, HEMI_SKY, k).lerp(WARM_FILL, warm * 0.25)
-    mix(this.hemi.groundColor, HEMI_GROUND, k).lerp(tint, warm * 0.2)
-    this.hemi.intensity = lerp(2.1, 1.1, k) + warm * 0.2
+    // Golden hour: warm fill and a low warm sun with long, softer shadows.
+    mix(this.hemi.color, HEMI_SKY, k).lerp(WARM_FILL, warm * 0.45)
+    mix(this.hemi.groundColor, HEMI_GROUND, k).lerp(tint, warm * 0.3)
+    this.hemi.intensity = lerp(2.2, 1.15, k) + warm * 0.2
 
-    mix(this.sun.color, SUN, k).lerp(WARM_SUN, warm * 0.85)
-    this.sun.intensity = lerp(1.0, 2.8, k) + warm * 1.9
-    this.sun.shadow.intensity = lerp(0.35, 0.8, k) - warm * 0.1
+    mix(this.sun.color, SUN, k).lerp(WARM_SUN, warm * 0.9)
+    this.sun.intensity = lerp(0.95, 2.7, k) + warm * 1.6
+    this.sun.shadow.intensity = lerp(0.35, 0.72, k) - warm * 0.12
 
     // Moonlight stays high, the sun sinks toward the horizon in the middle of a transition.
-    const elevation = THREE.MathUtils.degToRad(k > 0.5 ? lerp(34, 55, (k - 0.5) * 2) : lerp(40, 34, k * 2))
+    const elevation = THREE.MathUtils.degToRad(k > 0.5 ? lerp(26, 55, (k - 0.5) * 2) : lerp(40, 26, k * 2))
     this.dir.set(SUN_AZIMUTH.x * Math.cos(elevation), Math.sin(elevation), SUN_AZIMUTH.y * Math.cos(elevation))
     this.placeSun()
   }

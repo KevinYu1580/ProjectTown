@@ -1,5 +1,8 @@
 // Office tower: glass-fronted lobby with desks, three floors of regular window grid, project-colour crown.
 import * as THREE from 'three'
+import { createRng } from '../../util/prng'
+import { voxelBush, windowBox } from '../flora'
+import { PAL, accentTone } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -19,12 +22,14 @@ const GLASS_Z = HD - 0.15
 const WARM = 0xffd08a
 
 export const build: BuildFn = (color) => {
-  const wall = material(0xe4e6ec)
-  const trim = material(0x98a1b4)
-  const accent = material(color)
-  const dark = material(0x2a2f3d)
-  const wood = material(0x9b7452)
-  const green = material(0x4f9a5a)
+  const wall = material(PAL.white[1])
+  const trim = material(PAL.steel[2])
+  const accent = material(accentTone(color))
+  const dark = material(PAL.frame)
+  const wood = material(PAL.wood[1])
+  const green = material(PAL.hedge[1])
+  const deck = material(PAL.slate[2]) // darker roof so the white block keeps a crisp top edge from above
+  const rng = createRng(11)
 
   // Own materials: emissive strength follows lit state and light level.
   const interior = new THREE.MeshStandardMaterial({ color: 0xd9c7a8, emissive: 0xffc27a, roughness: 0.9 })
@@ -44,7 +49,7 @@ export const build: BuildFn = (color) => {
   solid.box(0, 0, -HD + WALL / 2, W, GROUND_H, WALL, wall)
   for (const s of [-1, 1]) solid.box(s * (HW - WALL / 2), 0, -WALL / 2, WALL, GROUND_H, D - WALL, wall) // stops at the front pier
   solid.box(0, GROUND_H, 0, W, FLOOR_H * FLOORS, D, wall)
-  solid.box(0, ROOF_Y, 0, W + 0.3, ROOF_DECK, D + 0.3, trim)
+  solid.box(0, ROOF_Y, 0, W + 0.3, ROOF_DECK, D + 0.3, deck)
   const py = ROOF_Y + ROOF_DECK
   solid.box(0, py, HD + 0.025, W + 0.3, PARAPET, 0.25, accent)
   solid.box(0, py, -HD - 0.025, W + 0.3, PARAPET, 0.25, accent)
@@ -95,6 +100,17 @@ export const build: BuildFn = (color) => {
     for (const z of sideZs) for (const s of [-1, 1]) solid.box(s * (HW + 0.09), y, z, 0.18, 0.1, 1.5, trim)
   }
 
+  // Flower boxes on a checkerboard of the front and right-hand windows.
+  for (let f = 0; f < FLOORS; f++) {
+    const y = rowY(f) - 0.75 - 0.08
+    frontXs.forEach((x, k) => {
+      if ((k + f) % 2 === 0) windowBox(solid, x, y, HD + 0.18, 1.1, 'z+', () => Math.floor(rng() * 7))
+    })
+    sideZs.forEach((z, k) => {
+      if ((k + f) % 2 === 1) windowBox(solid, HW + 0.18, y, z, 1.2, 'x+', () => Math.floor(rng() * 7))
+    })
+  }
+
   // Piers between windows and floor bands (they stand proud of the window quads).
   const pierH = FLOOR_H * FLOORS
   for (const x of [-4.25, -2.55, -0.85, 0.85, 2.55, 4.25]) {
@@ -136,7 +152,16 @@ export const build: BuildFn = (color) => {
   solid.box(3.0, py, -2.0, 1.8, 1.5, 1.8, wall)
   solid.box(3.0, py, -2.0 + 0.92, 0.7, 1.1, 0.06, dark)
   solid.box(3.0, py + 1.5, -2.0, 2.0, 0.12, 2.0, trim)
-  solid.box(-3.3, py, 1.5, 1.3, 0.45, 1.0, green)
+  // Roof garden (front left) and a row of solar panels (front right).
+  solid.box(-2.6, py, 1.6, 2.9, 0.35, 1.5, wood)
+  solid.box(-2.6, py + 0.35, 1.6, 2.7, 0.05, 1.3, material(PAL.lawn[1]))
+  voxelBush(solid, -3.4, py + 0.4, 1.6, 0.75, 0.2)
+  voxelBush(solid, -1.9, py + 0.4, 1.7, 0.6, 0.7)
+  for (const x of [1.2, 2.5]) {
+    solid.box(x, py, 1.5, 0.12, 0.3, 1.2, dark)
+    solid.box(x, py + 0.3, 1.5, 1.15, 0.08, 1.4, trim)
+    solid.box(x, py + 0.38, 1.5, 1.0, 0.04, 1.25, material(PAL.solar))
+  }
   solid.box(3.9, py, 1.7, 0.1, 2.2, 0.1, dark)
   solid.box(3.9, py + 1.6, 1.7, 0.7, 0.08, 0.08, dark)
   const height = py + 2.2

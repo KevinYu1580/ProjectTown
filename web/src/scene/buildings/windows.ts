@@ -10,6 +10,9 @@ const THICKNESS = 0.1
 const NIGHT_OFF = new THREE.Color(0x0d1420)
 const DAY_OFF = new THREE.Color(0x587590)
 const WARM = new THREE.Color(0xffcf7a)
+// Lit windows vary a little (lamp shades, curtains): a fixed tint per window index, so the facade never looks flat.
+const TINTS = [new THREE.Color(1, 1, 1), new THREE.Color(1.04, 0.95, 0.84), new THREE.Color(0.94, 0.95, 1.0), new THREE.Color(1.06, 1.02, 0.94)]
+const tintOf = (i: number): THREE.Color => TINTS[(i * 7 + (i >> 2)) % TINTS.length]
 
 const NORMALS: Record<Facing, [number, number, number]> = { 'z+': [0, 0, 1], 'z-': [0, 0, -1], 'x+': [1, 0, 0], 'x-': [-1, 0, 0] }
 const YAWS: Record<Facing, number> = { 'z+': 0, 'z-': Math.PI, 'x+': Math.PI / 2, 'x-': -Math.PI / 2 }
@@ -101,7 +104,7 @@ export class WindowSet {
     for (let i = 0; i < this.states.length; i++) {
       const s = this.states[i]
       if (s === 'lit' && this.lit) {
-        c.copy(litBase)
+        c.copy(litBase).multiply(tintOf(i))
         if (this.flicker) c.multiplyScalar(1 + 0.1 * Math.sin(this.time * 0.004 + i * 1.7) + 0.05 * Math.sin(this.time * 0.013 + i * 3.1))
       } else if (s === 'sleep') c.copy(sleep)
       else c.copy(off)

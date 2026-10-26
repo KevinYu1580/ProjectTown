@@ -5,11 +5,13 @@ import { lightLevel, type LightInfo } from '../time/dayNight'
 import type { CameraBase, ProjectTownAPI, SceneSettings, ToSwift, TownState } from '../types'
 import { fnv1a32 } from '../util/hash'
 import { createRng } from '../util/prng'
+import { Ambient } from './ambient'
 import { CameraRig } from './camera'
 import { CharacterManager } from './characters/manager'
 import type { SceneClock } from './clock'
 import { computeLayout, type TownLayout } from './layout'
 import { Lot, LOT_Y } from './lot'
+import { PAL } from './palette'
 import { PostFX } from './postfx'
 import { RenderLoop } from './loop'
 import { Sky } from './sky'
@@ -52,6 +54,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
   private readonly postfx: PostFX
   private readonly sky: Sky
   private readonly street: Street
+  private readonly ambient: Ambient
   private readonly characters: CharacterManager
   private readonly hud: Hud
   private readonly loop: RenderLoop
@@ -81,6 +84,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
 
     this.sky = new Sky(this.scene, this.renderer)
     this.street = new Street(this.scene)
+    this.ambient = new Ambient(this.scene)
     this.rig = new CameraRig(window.innerWidth / window.innerHeight)
     this.postfx = new PostFX(this.renderer, this.scene, this.rig.camera)
     this.characters = new CharacterManager(this.scene, { rng: createRng(this.seed), animate: !this.clock.frozen })
@@ -225,6 +229,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.lots.clear()
     this.characters.dispose()
     this.street.dispose()
+    this.ambient.dispose()
     this.sky.dispose()
     this.postfx.dispose()
     this.hud.dispose()
@@ -241,6 +246,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.rig.update(dt)
     for (const lot of this.lots.values()) lot.tick(dt, now)
     this.characters.update(dt, now)
+    this.ambient.update(dt)
     if (!this.clock.frozen && now - this.lastLabelRefresh >= LABEL_REFRESH_MS) {
       this.lastLabelRefresh = now
       this.syncCharacters()
@@ -268,6 +274,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
   private applyLayout(layout: TownLayout): void {
     this.layout = layout
     this.street.build(layout)
+    this.ambient.build(layout)
     this.maxHeight = -1
     this.refit()
     this.updateEmptyPatch()
@@ -293,7 +300,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     }
     if (this.emptyPatch) return
     const size = this.layout.lotSize
-    this.emptyPatch = new VoxelBuilder().box(0, 0, 0, size, LOT_Y, size, material(0x8f8c84)).build({ receiveShadow: true })
+    this.emptyPatch = new VoxelBuilder().box(0, 0, 0, size, LOT_Y, size, material(PAL.paving[1])).build({ receiveShadow: true })
     this.scene.add(this.emptyPatch)
   }
 
@@ -304,6 +311,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.lightValid = true
     this.sky.apply(info)
     this.street.setLightLevel(info.level)
+    this.ambient.setLightLevel(info.level)
     this.characters.setLightLevel(info.level)
     for (const lot of this.lots.values()) lot.setLightLevel(info.level)
   }

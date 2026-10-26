@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { PAL, accentTone, mutedAccent } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -25,13 +26,13 @@ function tilted(len: number, thick: number, width: number, rotZ: number, cx: num
 }
 
 export const build: BuildFn = (color) => {
-  const wall = material(0xc9d6bd)
-  const accent = material(color)
-  const frame = material(0xf3f1e8)
-  const dark = material(0x34403a)
-  const wood = material(0x8a6a4a)
-  const leafD = material(0x3f8f4a)
-  const leafL = material(0x74c35e)
+  const wall = material(PAL.sage[1])
+  const accent = material(accentTone(color))
+  const frame = material(PAL.white[2])
+  const dark = material(PAL.frame)
+  const wood = material(PAL.wood[1])
+  const leafD = material(PAL.leaf[0])
+  const leafL = material(PAL.leaf[2])
 
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a2f, emissive: GROW, emissiveIntensity: 2 })
   const screenMat = new THREE.MeshStandardMaterial({ color: 0x102030, emissive: 0x6fd3ff, emissiveIntensity: 2 })
@@ -54,7 +55,7 @@ export const build: BuildFn = (color) => {
   const pzc = (D / 2 + PZ0) / 2
   solid.box(pxc, 0.1, pzc, pw, ROOF_Y - 0.1, pd, wall)
   solid.box(pxc, 0.1, pzc, pw + 0.04, 0.5, pd + 0.04, dark) // base course
-  solid.box(pxc, ROOF_Y, pzc, pw + 0.2, 0.35, pd + 0.2, accent)
+  solid.box(pxc, ROOF_Y, pzc, pw + 0.2, 0.35, pd + 0.2, material(mutedAccent(color)))
   solid.box(DOOR_X, 0.1, D / 2, 1.2, 2.2, 0.1, dark)
   solid.box(DOOR_X, 2.3, D / 2 + 0.1, 1.9, 0.18, 0.7, accent) // door awning
   solid.box(DOOR_X, 2.1, D / 2 + 0.02, 1.6, 0.2, 0.06, dark)

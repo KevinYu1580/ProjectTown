@@ -1,5 +1,6 @@
 // Warehouse: wide and low, corrugated walls, stepped roof with skylights, half-open roll-up door, glass office, pallets and crates.
 import * as THREE from 'three'
+import { PAL, accentTone } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -21,15 +22,15 @@ const DESKS: Array<[number, number]> = [-0.1, 1.5, 3.1].map((x): [number, number
   .concat([-0.9, 0.7, 2.3].map((x): [number, number] => [x, ZG - 1.65]))
 
 export const build: BuildFn = (color) => {
-  const wall = material(0x8f9ca6)
-  const rib = material(0x7b8993)
-  const roof = material(0x66717b)
-  const dark = material(0x2d333c)
-  const floorMat = material(0x8d8a85)
-  const wood = material(0xa07a4f)
+  const wall = material(PAL.steel[2])
+  const rib = material(PAL.steel[1])
+  const roof = material(PAL.slate[2])
+  const dark = material(PAL.frame)
+  const floorMat = material(PAL.paving[0])
+  const wood = material(PAL.wood[2])
   const cardboard = material(0xc89b5d)
   const rack = material(0xe0872b)
-  const accent = material(color)
+  const accent = material(accentTone(color))
 
   // Own materials: emissive strength depends on lit state and light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })

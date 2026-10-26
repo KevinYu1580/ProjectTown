@@ -1,5 +1,6 @@
 // Lab: glass-fronted two-storey block, observatory-style voxel dome with a glowing slit, rooftop dish.
 import * as THREE from 'three'
+import { PAL, accentTone, mutedAccent } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -26,12 +27,12 @@ const DESKS: Array<[number, number]> = [-2.2, -0.5, 1.2].map((x): [number, numbe
   .concat([-1.35, 0.35, 2.05].map((x): [number, number] => [x, ZG - 1.65]))
 
 export const build: BuildFn = (color) => {
-  const wall = material(0xe6ecf1)
-  const fin = material(0x9fb0bd)
-  const dark = material(0x3c4752)
-  const floorMat = material(0xd5dce2)
-  const domeMat = material(0xf4f7fa)
-  const accent = material(color)
+  const wall = material(PAL.white[1])
+  const fin = material(PAL.steel[2])
+  const dark = material(PAL.frame)
+  const floorMat = material(PAL.white[0])
+  const domeMat = material(PAL.white[2])
+  const accent = material(accentTone(color))
 
   // Own materials: emissive strength depends on lit state and light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })
@@ -70,7 +71,7 @@ export const build: BuildFn = (color) => {
   solid.box(DOOR_X, 0.1, ZG, 1.2, 2.3, 0.1, dark) // door leaf
   glass.box(DOOR_X, 2.4, ZG, 1.2, 1.4, 0.06, glassMat)
   solid.box(DOOR_X, 2.7, D / 2 + 0.55, 1.8, 0.12, 1.1, accent) // door canopy
-  solid.box(0, ROOF, 0, W + 0.6, EAVE, D + 0.6, accent)
+  solid.box(0, ROOF, 0, W + 0.6, EAVE, D + 0.6, material(mutedAccent(color)))
   for (let i = -2; i <= 2; i++) solid.box(i * 2.1, TOP, D / 2 + 0.2, 0.08, 0.8, 0.08, dark) // roof railing
   solid.box(0, TOP + 0.8, D / 2 + 0.2, W + 0.5, 0.07, 0.07, dark)
   for (const z of [-1.7, 0, 1.7]) solid.box(W / 2 + 0.2, TOP, z, 0.08, 0.8, 0.08, dark)

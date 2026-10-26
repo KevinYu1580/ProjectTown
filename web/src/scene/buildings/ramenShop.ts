@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { PAL, accentTone, mutedAccent } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -38,13 +39,13 @@ function signTexture(): THREE.CanvasTexture | null {
 }
 
 export const build: BuildFn = (color) => {
-  const plaster = material(0xeadfc6)
+  const plaster = material(PAL.cream[1])
   const timber = material(0x4d3527)
-  const tile = material(0x3a4150)
-  const accent = material(color)
-  const brick = material(0x94503d)
-  const floorM = material(0x7a5a3e)
-  const tableM = material(0xc9a06a)
+  const tile = material(PAL.slate[0])
+  const accent = material(accentTone(color))
+  const brick = material(PAL.brick[0])
+  const floorM = material(PAL.wood[0])
+  const tableM = material(PAL.wood[2])
 
   // Own materials: emissive strength follows the lit state and the light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })
@@ -128,7 +129,8 @@ export const build: BuildFn = (color) => {
 
   // ---- roof: accent eave, slate tiers, loft with windows, second roof ----
   const roofY = H
-  solid.box(0, roofY, 0, W + 1.4, 0.25, D + 1.4, accent)
+  const eave = material(mutedAccent(color))
+  solid.box(0, roofY, 0, W + 1.4, 0.25, D + 1.4, eave)
   solid.box(0, roofY + 0.25, 0, W + 0.8, 0.3, D + 0.8, tile)
   const loftY = roofY + 0.55
   solid.box(0, loftY, 0, 5.2, 1.9, 4.4, plaster)
@@ -137,7 +139,7 @@ export const build: BuildFn = (color) => {
   const loftTop = loftY + 1.9
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 0.56), signMat) // shop name board on the loft front
   sign.position.set(0, loftY + 0.42, 2.2 + 0.03)
-  solid.box(0, loftTop, 0, 6.2, 0.2, 5.4, accent)
+  solid.box(0, loftTop, 0, 6.2, 0.2, 5.4, eave)
   solid.box(0, loftTop + 0.2, 0, 5.4, 0.5, 4.6, tile)
   solid.box(0, loftTop + 0.7, 0, 3.8, 0.5, 3.0, tile)
   solid.box(0, loftTop + 1.2, 0, 2.2, 0.35, 1.0, accent)

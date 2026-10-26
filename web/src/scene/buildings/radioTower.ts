@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { windowBox } from '../flora'
+import { PAL, accentTone, mutedAccent } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -53,11 +55,11 @@ function onAirTexture(): THREE.CanvasTexture | null {
 }
 
 export const build: BuildFn = (color) => {
-  const wall = material(0xd9d3c4)
-  const accent = material(color)
-  const dark = material(0x2f3440)
-  const deskMat = material(0x8a6a4a)
-  const unit = material(0xb9b7b0)
+  const wall = material(PAL.cream[1])
+  const accent = material(accentTone(color))
+  const dark = material(PAL.frame)
+  const deskMat = material(PAL.wood[1])
+  const unit = material(PAL.steel[2])
 
   // Own materials: emissive strength follows lit state and light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })
@@ -83,7 +85,7 @@ export const build: BuildFn = (color) => {
   solid.box(0, 0.1, -D / 2 + 0.15, W, FLOOR_H - 0.1, 0.3, wall)
   solid.box(-W / 2 + 0.15, 0.1, 0, 0.3, FLOOR_H - 0.1, D, wall)
   solid.box(0, FLOOR_H, 0, W, FLOOR_H, D, wall)
-  solid.box(0, ROOF_Y, 0, W + 0.7, 0.35, D + 0.7, accent)
+  solid.box(0, ROOF_Y, 0, W + 0.7, 0.35, D + 0.7, material(mutedAccent(color)))
   // Front pillars, door, fascia band in the project colour.
   for (const [x, w] of [[-W / 2 + 0.2, 0.4], [1.75, 0.5], [W / 2 - 0.25, 0.5]]) solid.box(x, 0.1, D / 2 - 0.15, w, FLOOR_H - 0.1, 0.3, wall)
   solid.box(DOOR_X, 0.1, D / 2 - 0.05, 1.2, 2.2, 0.1, dark)
@@ -124,6 +126,7 @@ export const build: BuildFn = (color) => {
     else solid.box(x, winY - 0.82, z, 0.1, 1.64, fw, dark)
   }
   for (const x of [-2.8, -1.4, 0]) win('z+', x)
+  for (const x of [-2.8, 0]) windowBox(solid, x, winY - 1.02, D / 2 + 0.05, 1.2, 'z+', (i) => (i * 2 + 4) % 7)
   for (const z of [-1.7, 0, 1.7]) win('x+', z)
   for (const z of [-1.7, 0, 1.7]) win('x-', z)
   for (const x of [-2.4, 0, 2.4]) win('z-', x)

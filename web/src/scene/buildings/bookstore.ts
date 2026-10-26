@@ -1,6 +1,8 @@
 // Bookstore: green two-storey shop with a project-colour sign band, big display windows, packed shelves and a giant book stack carrying the sign.
 import * as THREE from 'three'
 import { createRng } from '../../util/prng'
+import { windowBox } from '../flora'
+import { PAL, accentTone } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -18,12 +20,12 @@ const SPOT_XS = [-3.2, -2.25, -1.3, 1.3, 2.25, 3.2]
 const STACK_TOP = TOP + 1.5
 
 export const build: BuildFn = (color) => {
-  const wall = material(0x3a6b57)
-  const trim = material(0xe9dfc8)
-  const accent = material(color)
-  const wood = material(0x7a4e35)
-  const dark = material(0x4b5160)
-  const plant = material(0x4f8f4a)
+  const wall = material(PAL.bottle[1])
+  const trim = material(PAL.cream[1])
+  const accent = material(accentTone(color))
+  const wood = material(PAL.wood[0])
+  const dark = material(PAL.slate[0])
+  const plant = material(PAL.leaf[1])
 
   // Own materials: emissive follows the lit state and the light level.
   const bookMats = [0xb8453f, 0xe3b54a, 0x3f8d8a].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, emissive: c, emissiveIntensity: 0 }))
@@ -61,6 +63,8 @@ export const build: BuildFn = (color) => {
   const UY = H1 + 1.5
   for (const x of [-2.85, -0.95, 0.95, 2.85]) win(x, UY, HD, 1.2, 1.4, 'z+')
   for (const z of [-2.2, 0, 2.2]) win(HW, UY, z, 1.3, 1.4, 'x+')
+  for (const x of [-2.85, 2.85]) windowBox(s, x, UY - 0.98, HD + 0.08, 1.3, 'z+', (i) => (i * 3 + 1) % 7)
+  for (const z of [-2.2, 2.2]) windowBox(s, HW + 0.08, UY - 0.98, z, 1.4, 'x+', (i) => (i * 5 + 2) % 7)
   for (const z of [-2.2, 0, 2.2]) win(-HW, UY, z, 1.3, 1.4, 'x-')
   for (const z of [-1.5, 1.5]) win(-HW, 2, z, 1.3, 1.3, 'x-')
   for (const x of [-2.85, -0.95, 0.95, 2.85]) win(x, UY, -HD, 1.2, 1.4, 'z-')

@@ -120,6 +120,14 @@ export class Sign {
     ctx.beginPath()
     ctx.roundRect((LW - nameW) / 2, top, nameW, 27, 6)
     ctx.fill()
+    // Bevel: a lighter top lip and a darker base line make the board read as a physical sign.
+    ctx.save()
+    ctx.clip()
+    ctx.fillStyle = 'rgba(255,255,255,0.24)'
+    ctx.fillRect((LW - nameW) / 2, top, nameW, 2)
+    ctx.fillStyle = 'rgba(0,0,0,0.16)'
+    ctx.fillRect((LW - nameW) / 2, top + 24, nameW, 3)
+    ctx.restore()
     if (!c.lit) {
       ctx.fillStyle = 'rgba(8,10,18,0.5)'
       ctx.fill()

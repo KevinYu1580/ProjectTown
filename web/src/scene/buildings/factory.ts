@@ -1,5 +1,6 @@
 // Factory: brick hall with a glass office front, stepped sawtooth roof with glazed faces, chimney that smokes while running.
 import * as THREE from 'three'
+import { PAL, accentTone } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -26,12 +27,12 @@ const PUFFS = 10
 const PUFF_PERIOD = 7000
 
 export const build: BuildFn = (color) => {
-  const brick = material(0xa9634b)
-  const steel = material(0x77818f)
-  const accent = material(color)
-  const dark = material(0x2a2f3d)
-  const wood = material(0x9b7452)
-  const yellow = material(0xe9b932)
+  const brick = material(PAL.brick[1])
+  const steel = material(PAL.steel[1])
+  const accent = material(accentTone(color))
+  const dark = material(PAL.frame)
+  const wood = material(PAL.wood[1])
+  const yellow = material(0xe8b83a)
 
   const interior = new THREE.MeshStandardMaterial({ color: 0xc4bfb4, emissive: 0xffc27a, roughness: 0.9 })
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM })

@@ -1,5 +1,6 @@
 // Cafe: cream corner shop with a striped awning, a window bar with laptops, a stepped gable roof and a cup blade sign.
 import * as THREE from 'three'
+import { PAL, accentTone } from '../palette'
 import { VoxelBuilder, disposeGeometries, material } from '../voxel'
 import type { BuildFn, WindowState } from './types'
 import { WindowSet } from './windows'
@@ -18,13 +19,13 @@ const SPOT_XS = [-3.2, -2.2, -1.2, -0.2, 0.8, 1.8]
 const CHIMNEY = { x: -2.4, z: -1.2, top: TOP + 2.9 }
 
 export const build: BuildFn = (color) => {
-  const wall = material(0xeadcc0)
-  const accent = material(color)
-  const dark = material(0x3b2e2a)
-  const wood = material(0x8a5a3a)
-  const brick = material(0xa65d45)
-  const plant = material(0x4f8f4a)
-  const slate = material(0x56525e)
+  const wall = material(PAL.cream[1])
+  const accent = material(accentTone(color))
+  const dark = material(PAL.warmDark)
+  const wood = material(PAL.wood[1])
+  const brick = material(PAL.brick[1])
+  const plant = material(PAL.leaf[1])
+  const slate = material(PAL.slate[1])
 
   // Own materials: their emissive strength follows the lit state and the light level.
   const lightMat = new THREE.MeshStandardMaterial({ color: 0x332a1a, emissive: WARM, emissiveIntensity: 2 })
@@ -167,6 +168,19 @@ export const build: BuildFn = (color) => {
   s.box(3.9, 0, HD + 0.4, 0.6, 0.5, 0.5, brick)
   s.box(3.9, 0.5, HD + 0.4, 0.5, 0.5, 0.4, plant)
   for (const dx of [-0.15, 0.1, 0.2]) s.box(3.9 + dx, 1.0, HD + 0.4, 0.12, 0.1, 0.12, accent)
+  // Festoon lights over the terrace: two strings from the fascia to slim posts, sagging between bulbs.
+  for (const fx of [-3.3, 0.3]) {
+    const z0 = HD + 0.15
+    const z1 = HD + 2.35
+    s.box(fx, 0, z1, 0.08, 2.75, 0.08, dark)
+    for (let k = 0; k <= 7; k++) {
+      const u = k / 7
+      const y = 3.3 + (2.6 - 3.3) * u - 0.35 * Math.sin(Math.PI * u)
+      const z = z0 + (z1 - z0) * u
+      inner.box(fx, y - 0.12, z, 0.1, 0.12, 0.1, lightMat)
+      s.box(fx, y, z, 0.03, 0.03, (z1 - z0) / 7, dark)
+    }
+  }
   s.box(-3.5, 0.15, HD + 0.7, 0.7, 0.85, 0.06, dark)
   for (const y of [0.85, 0.65, 0.45]) s.box(-3.5, y, HD + 0.745, y === 0.85 ? 0.45 : 0.35, 0.04, 0.03, wall)
   for (const dx of [-0.3, 0.3]) s.box(-3.5 + dx, 0, HD + 0.7, 0.05, 0.15, 0.05, dark)
