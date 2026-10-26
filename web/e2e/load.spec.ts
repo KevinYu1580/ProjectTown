@@ -13,3 +13,11 @@ test('page loads with a canvas and no console errors', async ({ page }) => {
 
   expect(errors).toEqual([]);
 });
+
+// WKWebView cannot load module scripts from file://, so the build must ship a classic script.
+test('built index.html uses a classic script (no type=module / crossorigin)', async ({ request }) => {
+  const html = await (await request.get('/index.html')).text();
+  expect(html).toMatch(/<script defer src="\.\/assets\/[^"]+\.js"><\/script>/);
+  expect(html).not.toContain('type="module"');
+  expect(html).not.toContain('crossorigin');
+});
