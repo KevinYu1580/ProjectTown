@@ -32,6 +32,58 @@ const SHRINK_PER_PROJECT = 0.02
 const live = new Set<Sign>()
 const size = new THREE.Vector2()
 
+// Name ink: white (with a shadow) while it keeps at least MIN_WHITE_CONTRAST against the plate, dark ink on lighter plates.
+const MIN_WHITE_CONTRAST = 3 // WCAG large-text level; bold 15 px text with a shadow reads fine down to here
+const INK_WHITE = '#ffffff'
+const INK_DARK = '#1c2230'
+// The overlay drawn over the plate of a lot without sessions (draw() paints it, nameInk() accounts for it).
+const UNLIT_TINT = [8, 10, 18]
+const UNLIT_ALPHA = 0.5
+
+export interface NameInk {
+  fill: string
+  shadow: boolean
+}
+
+/** '#rgb' or '#rrggbb' (any case) as [r, g, b] 0-255; null for anything else. */
+function parseHex(hex: string): number[] | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim())
+  if (!m) return null
+  const h = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1]
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16))
+}
+
+/** WCAG relative luminance of a hex colour: 0 (black) to 1 (white). Anything unparseable counts as black. */
+export function relativeLuminance(hex: string): number {
+  const rgb = parseHex(hex) ?? [0, 0, 0]
+  const [r, g, b] = rgb.map((v) => {
+    const c = v / 255
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+/** WCAG contrast ratio of two hex colours: 1 (identical) to 21 (black on white). */
+export function contrastRatio(a: string, b: string): number {
+  const la = relativeLuminance(a)
+  const lb = relativeLuminance(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
+/** The project colour as painted on the name plate: darkened by the overlay when the lot has no sessions. */
+function plateColor(color: string, lit: boolean): string {
+  const rgb = parseHex(color)
+  if (lit || !rgb) return color
+  const mixed = rgb.map((v, i) => Math.round(v * (1 - UNLIT_ALPHA) + UNLIT_TINT[i] * UNLIT_ALPHA))
+  return `#${mixed.map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** Text style for the project name on its plate: white with a shadow, or dark ink without one when white would be too faint. */
+export function nameInk(color: string, lit: boolean): NameInk {
+  const white = contrastRatio(INK_WHITE, plateColor(color, lit)) >= MIN_WHITE_CONTRAST
+  return white ? { fill: INK_WHITE, shadow: true } : { fill: INK_DARK, shadow: false }
+}
+
 /** Billboard sprite (origin = bottom-centre) that always faces the camera. */
 export class Sign {
   readonly object: THREE.Object3D
@@ -40,6 +92,7 @@ export class Sign {
   private readonly canvas = document.createElement('canvas')
   private readonly texture: THREE.CanvasTexture
   private lit = false
+  private plateLum = 0
   private key = ''
   private level = 1
   private lastUnit = 0
@@ -67,6 +120,7 @@ export class Sign {
     if (c.hiddenCount > 0) parts.push({ text: `+${c.hiddenCount}`, col: '#ffffff' })
     this.lines = parts.length ? [c.name, parts.map((p) => p.text).join('  ')] : [c.name]
     this.lit = c.lit
+    this.plateLum = relativeLuminance(plateColor(c.color, c.lit))
     // Skip the redraw and texture upload when nothing visible changed.
     const key = JSON.stringify([c.name, c.color, c.lit, parts])
     if (key !== this.key) {
@@ -100,7 +154,9 @@ export class Sign {
 
   private applyGlow(): void {
     // Colour above 1 feeds the bloom pass: faint by day, strong at night. Unlit signs stay readable but dim.
-    this.sprite.material.color.setScalar(this.lit ? 1 + (1 - this.level) * 0.3 : 0.75 + (1 - this.level) * 0.1)
+    // A light plate stays at the bloom threshold (1.0) at most: its bloom would veil the dark name text.
+    const boost = this.lit ? 1 + (1 - this.level) * 0.3 : 0.75 + (1 - this.level) * 0.1
+    this.sprite.material.color.setScalar(Math.min(boost, 1 / Math.max(this.plateLum, 0.01)))
   }
 
   private draw(c: SignContent, parts: Array<{ text: string; col: string }>): void {
@@ -111,7 +167,7 @@ export class Sign {
     ctx.clearRect(0, 0, LW, LH)
     ctx.textBaseline = 'middle'
 
-    // Line 1: white name on a project-colour block (darkened when the lot has no sessions).
+    // Line 1: name on a project-colour block (darkened when the lot has no sessions); white, or dark ink on light colours.
     ctx.font = `700 ${NAME_PX}px ${FONT}`
     const name = fit(ctx, c.name, LW - 28)
     const nameW = Math.min(LW - 4, Math.max(72, ctx.measureText(name).width + 28))
@@ -129,14 +185,17 @@ export class Sign {
     ctx.fillRect((LW - nameW) / 2, top + 24, nameW, 3)
     ctx.restore()
     if (!c.lit) {
-      ctx.fillStyle = 'rgba(8,10,18,0.5)'
+      ctx.fillStyle = `rgba(${UNLIT_TINT.join(',')},${UNLIT_ALPHA})`
       ctx.fill()
     }
-    ctx.fillStyle = '#fff'
+    const ink = nameInk(c.color, c.lit)
+    ctx.fillStyle = ink.fill
     ctx.textAlign = 'center'
-    ctx.shadowColor = 'rgba(0,0,0,0.55)' // keeps white readable on light project colours
-    ctx.shadowBlur = 3
-    ctx.shadowOffsetY = 1
+    if (ink.shadow) {
+      ctx.shadowColor = 'rgba(0,0,0,0.55)' // keeps white readable on mid-tone project colours
+      ctx.shadowBlur = 3
+      ctx.shadowOffsetY = 1
+    }
     ctx.fillText(name, LW / 2, top + 14)
     ctx.shadowColor = 'transparent'
 

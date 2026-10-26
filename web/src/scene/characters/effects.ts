@@ -9,13 +9,13 @@ export const STAGGER_PX = 28 // odd slots raise their bubble so neighbours do no
 export const GEAR_PX = 24
 export const GEAR_GAP = 0.7 // world units between head top and gear centre
 
-/** Bold glyph scaled to fill the canvas height, so a lower-case "z" is as tall as "Z". */
+/** Soft lavender-white glyph with a thin translucent outline, scaled to fill the canvas height (a "z" is as tall as "Z"). */
 function glyphTexture(ch: string): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = c.height = 96
   const ctx = c.getContext('2d')
   if (ctx) {
-    ctx.font = '900 80px -apple-system, "Helvetica Neue", sans-serif'
+    ctx.font = '800 80px -apple-system, "Helvetica Neue", sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
     const m = ctx.measureText(ch)
@@ -25,10 +25,10 @@ function glyphTexture(ch: string): THREE.CanvasTexture {
     ctx.scale(k, k)
     ctx.translate(0, (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2)
     ctx.lineJoin = 'round'
-    ctx.lineWidth = 12 / k
-    ctx.strokeStyle = '#1f2a55'
+    ctx.lineWidth = 9 / k
+    ctx.strokeStyle = 'rgba(50,44,112,0.7)'
     ctx.strokeText(ch, 0, 0)
-    ctx.fillStyle = '#f2f6ff'
+    ctx.fillStyle = '#e9e4ff'
     ctx.fillText(ch, 0, 0)
   }
   const tex = new THREE.CanvasTexture(c)
@@ -305,10 +305,15 @@ export class Fireworks {
   }
 }
 
-const ZZ_CYCLE = 4600
+const ZZ_CYCLE = 6400 // ms for one glyph to drift up and fade out
 const ZZ_FADE_MS = 700
+const ZZ_ALPHA = 0.8 // peak opacity: soft, so the "!" bubble stays the loudest thing in town
+const ZZ_RISE_PX = 36 // screen-space drift per cycle, so the glyph spacing does not depend on the zoom
+const ZZ_DRIFT_PX = 12 // sideways drift per cycle (up and to the right)
+const ZZ_SWAY_PX = 3
+const ZZ_SIZE_PX = [15, 20] // one entry per glyph (z, then Z, Z...): sprite size, of which the glyph fills 2/3; it grows 30 % while rising
 
-/** Three drifting "z"/"Z" glyphs rising beside a sleeping window. */
+/** Small drifting "z"/"Z" glyphs rising beside a sleeping window. */
 export class SleepZ {
   alpha = 0
   dying = false
@@ -320,7 +325,8 @@ export class SleepZ {
     textures: [THREE.Texture, THREE.Texture],
     private readonly phase: number,
   ) {
-    this.sprites = [textures[0], textures[1], textures[1]].map((map) => {
+    this.sprites = ZZ_SIZE_PX.map((_, i) => {
+      const map = textures[i === 0 ? 0 : 1]
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false }))
       parent.add(s)
       return s
@@ -332,16 +338,15 @@ export class SleepZ {
     this.alpha = Math.min(1, Math.max(0, this.alpha + ((this.dying ? -1 : 1) * dtMs) / ZZ_FADE_MS))
     if (this.dying && this.alpha <= 0) return false
     this.sprites.forEach((s, i) => {
-      const u = (((timeMs / ZZ_CYCLE + this.phase + i / 3) % 1) + 1) % 1
-      const sway = Math.sin(u * Math.PI * 2.4 + i * 2) * 0.18
-      const out = (0.35 + u * 0.5) * scale
-      s.position.set(
-        base.x + outward.x * out - outward.z * sway * scale,
-        base.y + (0.25 + u * 1.3) * scale,
-        base.z + outward.z * out + outward.x * sway * scale,
-      )
-      s.scale.setScalar((28 + 10 * u) * (0.9 + 0.1 * i) * PX)
-      s.material.opacity = this.alpha * Math.pow(Math.sin(Math.PI * u), 0.5)
+      const u = (((timeMs / ZZ_CYCLE + this.phase + i / this.sprites.length) % 1) + 1) % 1
+      const px = ZZ_SIZE_PX[i] * (1 + 0.3 * u)
+      s.position.set(base.x + outward.x * 0.45 * scale, base.y + 0.2 * scale, base.z + outward.z * 0.45 * scale)
+      s.scale.setScalar(px * PX)
+      // The drift is a screen-space offset: `center` moves the quad in units of the sprite size.
+      const dx = 5 + u * ZZ_DRIFT_PX + Math.sin(u * Math.PI * 2 + i * 2) * ZZ_SWAY_PX
+      const dy = 4 + u * ZZ_RISE_PX
+      s.center.set(0.5 - dx / px, 0.5 - dy / px)
+      s.material.opacity = ZZ_ALPHA * this.alpha * Math.sin(Math.PI * u)
     })
     return true
   }
