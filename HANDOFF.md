@@ -385,7 +385,9 @@ interface SceneSettings {
   fps: 15 | 30 | 60 | 120
   hudVisible: boolean
   hideSessionNames: boolean
+  theme: 'pastoral' | 'urban'          // 外圍：田園或都會
   depthOfField: boolean
+  depthOfFieldStrength: number        // 景深模糊的倍率，1 為預設
   dayNight:
     | { mode: 'realtime'; sunrise: string; sunset: string }          // 'HH:mm'
     | { mode: 'cycle'; periodMinutes: number; dayRatio: number; cycleEpoch: number }
@@ -628,7 +630,10 @@ function lightLevel(nowMs: number, settings: SceneSettings['dayNight']): { level
   "fps": 60,
   "hudVisible": true,
   "hideSessionNames": true,
+  "theme": "pastoral",
   "depthOfField": true,
+  "depthOfFieldStrength": 1,
+  "wallpaperSnapshot": true,
   "finishedWindowMinutes": 30,
   "sleepThresholdMinutes": 120,
   "dayNight": { "mode": "realtime", "sunrise": "06:00", "sunset": "18:00", "cyclePeriodMinutes": 60, "dayRatio": 0.5 },
@@ -638,7 +643,9 @@ function lightLevel(nowMs: number, settings: SceneSettings['dayNight']): { level
 }
 ```
 
-`buildingStyle` 是 `"auto"` 或 §8.4 的其中一個 key。
+`buildingStyle` 是 `"auto"` 或 §8.4 的其中一個 key。`depthOfFieldStrength` 範圍 0.25–2.0。
+
+`wallpaperSnapshot` 只在 Swift 端使用（不送給場景）：macOS 在切換 Space、進出指揮中心時偶爾不畫桌面層級的視窗，會閃出系統桌布。開啟時，小鎮視窗在桌面 Space 上可見約 1.5 秒後、之後每 5 分鐘、以及改變外觀的設定之後，用 `WKWebView.takeSnapshot` 截圖存成 `Wallpaper/town-<slot>-<n>.jpg`，再以 `setDesktopImageURL` 設為小鎮所在螢幕「目前 Space」的系統桌布。被遮住、暫停或調整視角時不做事。每個 Space 原本的桌布依 slot 記在 `Wallpaper/slots.json`（`WallpaperSnapshotLedger`）；關閉選項、結束 app、把小鎮移到別的螢幕時，以及之後切換到仍顯示我們截圖的 Space 時，換回原本的桌布。
 
 ### 9.2 設定視窗（SwiftUI，`Settings` scene 或獨立 `Window`，約 640×480）
 
@@ -658,10 +665,12 @@ function lightLevel(nowMs: number, settings: SceneSettings['dayNight']): { level
   - 固定循環：週期長度（5 分鐘–24 小時）、白天比例滑桿（10%–90%）
 - 攝影機模式：固定／定時環繞（間隔 1–60 分鐘）／自動緩慢環繞（一圈 2–60 分鐘，預設 60）
 - 「調整視角…」按鈕（等同 menubar 的項目）、「重設視角」按鈕
-- 移軸景深：開關
+- 主題：田園／都會（分段選擇器）
+- 景深模糊：開關；模糊強度滑桿（25%–200%，間隔 5%，關閉時停用）
 - HUD：開關
 - 顯示器：下拉選單（`NSScreen.screens` 的 `localizedName`）
 - FPS：15／30／60／120（分段選擇器）
+- 切換桌面時顯示小鎮：開關，預設開啟（`wallpaperSnapshot`，見 §9.1）
 
 **狀態**
 - 「剛完成」持續時間：1–240 分鐘，預設 30

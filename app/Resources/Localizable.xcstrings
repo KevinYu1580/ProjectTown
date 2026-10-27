@@ -193,6 +193,22 @@
         }
       }
     },
+    "Blur strength" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur strength"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊強度"
+          }
+        }
+      }
+    },
     "Bookstore" : {
       "localizations" : {
         "en" : {
@@ -253,6 +269,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "攝影機"
+          }
+        }
+      }
+    },
+    "City" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "City"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "都會"
           }
         }
       }
@@ -321,6 +353,22 @@
         }
       }
     },
+    "Countryside" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Countryside"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "田園"
+          }
+        }
+      }
+    },
     "Cycle length" : {
       "localizations" : {
         "en" : {
@@ -365,6 +413,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "白天比例"
+          }
+        }
+      }
+    },
+    "Depth-of-field blur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Depth-of-field blur"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "景深模糊"
           }
         }
       }
@@ -993,6 +1057,22 @@
         }
       }
     },
+    "Sets the system wallpaper to a snapshot of the town, so switching desktops or opening Mission Control no longer flashes your old wallpaper. Turning this off puts your wallpaper back." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sets the system wallpaper to a snapshot of the town, so switching desktops or opening Mission Control no longer flashes your old wallpaper. Turning this off puts your wallpaper back."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "會把系統桌布換成小鎮的截圖，切換桌面或開啟指揮中心時就不會閃出原本的桌布；關閉後會換回原本的桌布。"
+          }
+        }
+      }
+    },
     "Show HUD" : {
       "localizations" : {
         "en" : {
@@ -1005,6 +1085,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示 HUD"
+          }
+        }
+      }
+    },
+    "Show the town while switching desktops" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show the town while switching desktops"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "切換桌面時顯示小鎮"
           }
         }
       }
@@ -1105,6 +1201,22 @@
         }
       }
     },
+    "The blur strength must be between 25% and 200%." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The blur strength must be between 25% and 200%."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊強度必須介於 25% 到 200% 之間。"
+          }
+        }
+      }
+    },
     "The camera angle or zoom is out of range." : {
       "localizations" : {
         "en" : {
@@ -1185,6 +1297,22 @@
         }
       }
     },
+    "Theme" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theme"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "主題"
+          }
+        }
+      }
+    },
     "This folder no longer exists." : {
       "localizations" : {
         "en" : {
@@ -1197,22 +1325,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "這個資料夾已不存在。"
-          }
-        }
-      }
-    },
-    "Tilt-shift blur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tilt-shift blur"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移軸模糊"
           }
         }
       }

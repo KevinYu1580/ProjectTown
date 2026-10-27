@@ -124,6 +124,26 @@ final class ConfigValidationTests: XCTestCase {
         XCTAssertEqual(issues { $0.camera.base.zoom = 3.01 }, [.cameraZoom(3.01)])
     }
 
+    func testDepthOfFieldStrengthBoundaries() {
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0.25 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 2 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0.24 }, [.depthOfFieldStrength(0.24)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 2.01 }, [.depthOfFieldStrength(2.01)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0 }, [.depthOfFieldStrength(0)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = .nan }.count, 1)
+    }
+
+    func testRepairedResetsOnlyBlurStrength() {
+        let config = AppConfig(fps: 30, theme: .urban, depthOfField: false, depthOfFieldStrength: 5, wallpaperSnapshot: false)
+        let repaired = config.repaired()
+        XCTAssertEqual(repaired.validate(), [])
+        XCTAssertEqual(repaired.depthOfFieldStrength, 1)
+        XCTAssertEqual(repaired.theme, .urban)
+        XCTAssertFalse(repaired.depthOfField)
+        XCTAssertFalse(repaired.wallpaperSnapshot)
+        XCTAssertEqual(repaired.fps, 30)
+    }
+
     func testMultipleIssuesAreAllReported() {
         let result = issues {
             $0.fps = 7

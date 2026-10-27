@@ -66,4 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if ProcessInfo.processInfo.environment["PROJECTTOWN_OPEN_SETTINGS"] == "1" { settingsWindow.show() }
         #endif
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        wallpaper?.restoreSystemWallpaper()
+    }
 }
