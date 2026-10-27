@@ -5,8 +5,8 @@ options:
   developmentLanguage: en
 settings:
   base:
-    MARKETING_VERSION: 0.3.0
-    CURRENT_PROJECT_VERSION: 3
+    MARKETING_VERSION: 0.4.0
+    CURRENT_PROJECT_VERSION: 4
     SWIFT_VERSION: "6.0"
     SWIFT_EMIT_LOC_STRINGS: YES
     CODE_SIGN_IDENTITY: "-"

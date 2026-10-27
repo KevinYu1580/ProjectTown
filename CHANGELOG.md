@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-27
+
 ### Added
 
 - Traditional Chinese and English for the menu bar, settings window and messages, following the system language (Simplified Chinese and other languages show English). The wallpaper scene always uses the same language as the app.
