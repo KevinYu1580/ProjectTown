@@ -47,8 +47,23 @@ export const PAL = {
 
   // Background neighbourhood (urban outskirts): desaturated and calmer than the town, never an accent, so it reads as
   // scenery behind the projects.
-  bgWall: [0xe0d9cb, 0xdcd0b9, 0xcdd3c3, 0xc9d0d4, 0xdbcac0, 0xd5c8ae, 0xd1cec4, 0xdfd4b6],
-  bgHouseRoof: [0x9a7163, 0x6f7887, 0x7b8971, 0x8e7a68, 0x626873, 0x6f8786],
+  // Walls run from light to a few mid tones (clay, grey-green, lilac grey, straw, taupe) so streets do not read as one.
+  bgWall: [0xe0d9cb, 0xdcd0b9, 0xcdd3c3, 0xc9d0d4, 0xdbcac0, 0xd5c8ae, 0xd1cec4, 0xdfd4b6, 0xcbb9a7, 0xbec4b6, 0xc6c4cc, 0xd6c6a2, 0xc2b4aa],
+  bgHouseRoof: [0x9a7163, 0x6f7887, 0x7b8971, 0x8e7a68, 0x626873, 0x6f8786, 0xa3806b, 0x858079, 0x565b63, 0x8b6c66],
+  bgFlatRoof: [0xa6a197, 0x989690, 0xb2ab9e], // gravel and felt
+  bgFlats: [0xcac4b8, 0xbbb7ae, 0xc3b5a3, 0xaeb3b5, 0xbcaa9c, 0xa48a7d, 0xb4bbb2], // apartment blocks: render, concrete, brick; mid tones, as they are big
+  bgShed: [0xaab1b4, 0x9ba69f, 0xbdb5a3, 0x8f9aa7], // workshops: painted sheet metal
+  bgShedRoof: [0xb4b7b6, 0x9da3a6],
+  bgShedDoor: 0x5d636b,
+  bgAwning: [0x7f9a96, 0xa77c6c, 0x8f9470, 0x7c8aa0, 0xb39e6e], // corner shops: muted, the only accents out here
+  bgChurch: [0xddd6c7, 0x5f6670, 0x7f868d], // stone, slate roof, lead spire
+  bgCourt: [0xa38376, 0x7f9a80, 0x8a959c], // sports courts: clay, green, slate
+  bgLine: 0xddd8cb, // court and car park lines
+  bgPave: [0xb6ae9f, 0xc6beaf], // squares, yards and shop fronts
+  bgSandpit: 0xcdbf9d,
+  bgPool: 0x8fa7ae, // fountain water
+  bgEarth: [0xa49379, 0x978a73], // empty lots
+  bgPlay: [0x9a8070, 0x7f8f99, 0xb5a27a], // playground frames and slides
   bgLawn: [0x7fa25e, 0x88a964, 0x799b5a, 0x8aa86a],
   bgLane: 0x666a71, // residential lanes: lighter than the town's asphalt
   bgKerb: 0xb2ada2,
