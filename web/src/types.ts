@@ -89,7 +89,7 @@ export const DEFAULT_SCENE_SETTINGS: SceneSettings = {
   hideSessionNames: true,
   theme: 'pastoral',
   depthOfField: true,
-  depthOfFieldStrength: 1,
+  depthOfFieldStrength: 0.6,
   depthOfFieldRange: 0.25,
   dayNight: { mode: 'realtime', sunrise: '06:00', sunset: '18:00' },
   camera: {

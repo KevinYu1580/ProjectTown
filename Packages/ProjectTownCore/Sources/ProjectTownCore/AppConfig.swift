@@ -147,9 +147,9 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public var camera: CameraConfig
     public var displayUUID: String?
 
-    public init(version: Int = 1, projects: [ProjectConfig] = [], fps: Int = 60, hudVisible: Bool = true,
+    public init(version: Int = 1, projects: [ProjectConfig] = [], fps: Int = 15, hudVisible: Bool = false,
                 hideSessionNames: Bool = true, theme: SceneTheme = .pastoral, depthOfField: Bool = true,
-                depthOfFieldStrength: Double = 1, depthOfFieldRange: Double = 0.25, wallpaperSnapshot: Bool = true,
+                depthOfFieldStrength: Double = 0.6, depthOfFieldRange: Double = 0.25, wallpaperSnapshot: Bool = true,
                 finishedWindowMinutes: Int = 30,
                 sleepThresholdMinutes: Int = 120, dayNight: DayNightConfig = DayNightConfig(),
                 camera: CameraConfig = CameraConfig(), displayUUID: String? = nil) {

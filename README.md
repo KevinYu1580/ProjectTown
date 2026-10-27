@@ -28,7 +28,7 @@ When a session ends, its person walks out to the road and off the map.
 - Prefer a city? Set the theme to **City** (Settings → Appearance) and the town sits in a varied neighbourhood instead: houses of many sizes, row houses, small apartment blocks, corner shops, a school, a church, parks and parking lots.
 - Ten building styles (office, factory, café, bookstore, lab, warehouse, radio tower, greenhouse, clock tower, ramen shop), picked automatically or chosen per project, with your project color as an accent.
 - A glowing sign above each building with the project name and per-state counts, plus "+N" when more people are inside than fit on screen.
-- A HUD panel in the bottom-left corner with the session counts of every project. You can turn it off.
+- A HUD panel in the bottom-left corner with the session counts of every project. It is off by default; turn it on in Settings → Appearance.
 - Session names and "last active" times above each person, hidden by default for privacy.
 
 **Day and night**
@@ -42,13 +42,13 @@ When a session ends, its person walks out to the road and off the map.
 
 - **Fixed** (default), **Interval** (turns 90° every few minutes), or **Continuous** (a slow orbit, one turn per hour by default).
 - **Adjust View** (menu bar or Settings): rotate, zoom and pan the town right on your desktop, then save.
-- Depth-of-field blur for the miniature look: the scenery behind the town blurs more the farther away it is, and a band along the top and the bottom of the screen blurs too, with adjustable strength (25–200%) and range (0–45% of the screen height). The town itself always stays sharp. It can be turned off.
+- Depth-of-field blur for the miniature look: the scenery behind the town blurs more the farther away it is, and a band along the top and the bottom of the screen blurs too, with adjustable strength (25–200%, 60% by default) and range (0–45% of the screen height, 25% by default). The town itself always stays sharp. It can be turned off.
 - **Show the town while switching desktops** (on by default): macOS sometimes shows the system wallpaper for a moment while you switch desktops or open Mission Control. With this option ProjectTown sets the system wallpaper to a recent snapshot of the town, so you see the town instead. Turning it off puts your own wallpaper back.
 
 **Light on resources**
 
 - Rendering pauses completely while the desktop is covered (for example by a full-screen app), while the screens sleep, and while you are switched to another user.
-- Frame-rate limit: 15, 30 or 60 FPS (default 60).
+- Frame-rate limit: 15, 30 or 60 FPS (default 15).
 
 ## Requirements
 

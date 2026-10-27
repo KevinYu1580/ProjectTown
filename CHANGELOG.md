@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Depth of field blurs by distance instead of by screen position: the town, its signs and its people stay sharp wherever they are on screen, the scenery beyond it blurs more the farther away it is, things in front of the town blur only slightly, and the strongest blur is about a third weaker. The setting is now called "Depth-of-field blur".
 - Street lamps at night have smaller, softer light pools and halos, and the glow around lights is a little weaker.
 - The ground runs on past the edge of the diorama as plain grass in both themes, so the view no longer shows the plate's edge against the background.
+- New defaults: 15 FPS, the HUD hidden and 60% blur strength. Existing settings are kept.
 
 ## [1.0.0] - 2026-10-27
 

@@ -146,7 +146,7 @@ final class ConfigValidationTests: XCTestCase {
                                wallpaperSnapshot: false)
         let repaired = config.repaired()
         XCTAssertEqual(repaired.validate(), [])
-        XCTAssertEqual(repaired.depthOfFieldStrength, 1)
+        XCTAssertEqual(repaired.depthOfFieldStrength, 0.6)
         XCTAssertEqual(repaired.depthOfFieldRange, 0.25)
         XCTAssertEqual(repaired.theme, .urban)
         XCTAssertFalse(repaired.depthOfField)
@@ -164,7 +164,7 @@ final class ConfigValidationTests: XCTestCase {
     }
 
     func testRepairedKeepsValidSettingsAndResetsOnlyOffendingGroups() {
-        var config = AppConfig(projects: [ProjectConfig(path: "/a", name: "a")], fps: 30, hudVisible: false, displayUUID: "ABC")
+        var config = AppConfig(projects: [ProjectConfig(path: "/a", name: "a")], fps: 30, hudVisible: true, displayUUID: "ABC")
         config.camera.mode = .continuous
         config.camera.base = CameraBase(azimuthDeg: 200, pitchDeg: 50, zoom: 2, target: [1, 2])
         config.sleepThresholdMinutes = 5
@@ -180,7 +180,7 @@ final class ConfigValidationTests: XCTestCase {
         // Everything else survives.
         XCTAssertEqual(repaired.projects, config.projects)
         XCTAssertEqual(repaired.fps, 30)
-        XCTAssertFalse(repaired.hudVisible)
+        XCTAssertTrue(repaired.hudVisible)
         XCTAssertEqual(repaired.displayUUID, "ABC")
         XCTAssertEqual(repaired.camera, config.camera)
     }

@@ -43,7 +43,7 @@ ProjectTown 是一個 **macOS 動態桌布 app**。它把使用者設定的每�
 | Q5 | session 範圍 | 只追蹤本機的 session（CLI + 桌面版），不追蹤 cloud session |
 | Q6/Q11 | 互動 | 桌布純顯示、滑鼠穿透；所有控制走 menubar。完整的互動模式留到 v2 |
 | Q7 | 美術資源 | 全部程式生成 voxel，不用外部模型 |
-| Q8/Q15 | FPS | 可調：15 / 30 / 60 / 120，**預設 60**；一律照設定值，用電池時不降速；桌布被完全遮住時暫停渲染 |
+| Q8/Q15 | FPS | 可調：15 / 30 / 60 / 120，**預設 15**（v1.1.0 起，原為 60）；一律照設定值，用電池時不降速；桌布被完全遮住時暫停渲染 |
 | Q9/Q21 | 開源 | MIT；GitHub Releases 放未簽章（ad-hoc）的 `.app` zip；使用 release tag 與 changelog |
 | Q10 | 平台 | 只做 macOS，Windows 不做 |
 | Q12 | 「等你回應」資料來源 | 設定中提供 hooks 安裝／移除按鈕；沒裝 hooks 時退回只用 sessions 檔（另見 §5.1 新發現） |
@@ -628,12 +628,12 @@ function lightLevel(nowMs: number, settings: SceneSettings['dayNight']): { level
   "projects": [
     { "path": "/Users/me/github/ProjectTown", "name": "ProjectTown", "color": "#5B8DEF", "buildingStyle": "auto" }
   ],
-  "fps": 60,
-  "hudVisible": true,
+  "fps": 15,
+  "hudVisible": false,
   "hideSessionNames": true,
   "theme": "pastoral",
   "depthOfField": true,
-  "depthOfFieldStrength": 1,
+  "depthOfFieldStrength": 0.6,
   "depthOfFieldRange": 0.25,
   "wallpaperSnapshot": true,
   "finishedWindowMinutes": 30,
