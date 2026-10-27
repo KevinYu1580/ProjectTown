@@ -1,18 +1,21 @@
 // Pastoral theme: countryside around the town (placement in pastoralPlan.ts). Static parts go into one vertex-coloured mesh that is
-// tinted at night: the terrace fence with its gates, lanes, patchwork fields with crop rows, hedgerows, the
-// river banks and bridges, the railway and its tunnel portals, farms, windmill towers, woods, animals and the hills.
+// tinted at night: the terrace fence with its gates, lanes, meadows with wildflowers, patchwork fields with crop rows,
+// hedgerows, the river banks and bridges, the railway and its tunnel portals, farms and cottages, windmill towers,
+// woods, animals and the hills.
 // The river and the pond use the water material; sparse warm windows and lanterns share one additive mesh. Moving
 // parts: a train that passes now and then, windmill sails and tractors (by day). Nothing here casts shadows, is a
 // person or carries a sign: people stand for sessions and signs for projects. Moving parts follow an animation clock
 // that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs redrawing.
 import * as THREE from 'three'
+import { fnv1a32 } from '../../util/hash'
+import { createRng } from '../../util/prng'
 import type { TownLayout } from '../layout'
 import { PAL } from '../palette'
 import { PLATE_H, makeWaterMaterial, type TownEdge } from '../street'
 import { makeVoxelMaterial } from '../voxel'
 import {
   BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, hillTierRadius, planOutskirts, riverX, tractorPose, trainPose,
-  type Bridge, type Facing, type Farm, type Field, type Hill, type OutskirtsPlan, type Rect, type TrainPose, type Tree, type Windmill,
+  type Bridge, type Cottage, type Facing, type Farm, type Field, type Hill, type OutskirtsPlan, type Rect, type TrainPose, type Tree, type Windmill,
 } from './pastoralPlan'
 
 const GROUND = COUNTRY_Y
@@ -265,6 +268,7 @@ export class Outskirts {
     railway(solid, plan, at)
     lanes(solid, plan, at)
     for (const f of plan.farms) farm(solid, glow, f, plan, at((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2))
+    for (const ck of plan.cottages) cottage(solid, glow, ck, plan, at((ck.x0 + ck.x1) / 2, (ck.z0 + ck.z1) / 2))
     for (const w of plan.windmills) windmill(solid, glow, w, at(w.x, w.z))
     for (const t of plan.trees) tree(solid, t, at(t.x, t.z))
     for (const a of plan.animals) animal(solid, a, at(a.x, a.z))
@@ -548,7 +552,7 @@ function fieldTop(f: Field): number {
     case 'vegetables': case 'ploughed': return pick([PAL.bgSoil[1], PAL.bgSoil[2]])
     case 'hay': return PAL.bgHay[1]
     case 'pasture': return pick(PAL.bgPasture)
-    case 'orchard': case 'pond': case 'meadow': return pick(PAL.bgMeadow)
+    case 'orchard': case 'pond': case 'meadow': case 'wildflowers': return pick(PAL.bgMeadow)
     case 'wood': return PAL.bgWoodFloor
   }
 }
@@ -590,7 +594,8 @@ function field(b: Batch, f: Field, plan: OutskirtsPlan, c: Paint): void {
     case 'vegetables': rows(1.05, 0.55, 0.22, (i) => { const k = c(PAL.bgVeg[((i % 4) + 4) % 4]); return [c(PAL.bgVeg[((i % 4) + 4) % 4], 0.8), k] }); break
     case 'ploughed': rows(1.1, 0.5, 0.07, () => [c(PAL.bgSoil[0]), c(PAL.bgSoil[2])]); break
     case 'hay': rows(3.2, 1.5, 0.035, () => [c(PAL.bgHay[0]), c(PAL.bgHay[2])]); break
-    case 'pasture': if (near && !plan.lite) fence(b, f, y, c); break
+    case 'pasture': if (near && !plan.lite && (f.v * 7) % 1 < 0.55) fence(b, f, y, c); break // some are open grazing
+    case 'wildflowers': if (near) wildflowers(b, f, y, c); break
     default: break
   }
 }
@@ -613,6 +618,85 @@ function fence(b: Batch, f: Field, y: number, c: Paint): void {
       const u = a + ((d - a) * i) / n
       b.box(along ? u : at, y, along ? at : u, 0.13, 0.78, 0.13, wood, light)
     }
+  }
+}
+
+// Wildflower drifts: a main colour and a few blooms of a second (indices into PAL.bgWildflower).
+const FLOWER_PAIRS = [[1, 0], [4, 0], [2, 0], [0, 1], [3, 1], [2, 4]] as const
+
+/**
+ * Wildflowers in a meadow: a few drifts, each a rough round patch of low blooms on a voxel grid in two soft colours;
+ * most are flat specks (they read as colour from afar), some stand a little taller.
+ */
+function wildflowers(b: Batch, f: Field, y: number, c: Paint): void {
+  const r = createRng(fnv1a32(`flowers:${f.x0.toFixed(1)},${f.z0.toFixed(1)}`))
+  const w = f.x1 - f.x0
+  const d = f.z1 - f.z0
+  if (w < 5 || d < 5) return
+  const G = 0.45 // grid step
+  for (let i = Math.min(9, Math.max(1, Math.round((w * d) / 45))); i > 0; i--) {
+    const rad = Math.min(1.6 + 1.4 * r(), w / 2 - 1, d / 2 - 1)
+    const cx = f.x0 + 1 + rad + r() * Math.max(0, w - 2 - 2 * rad)
+    const cz = f.z0 + 1 + rad + r() * Math.max(0, d - 2 - 2 * rad)
+    const tones = FLOWER_PAIRS[Math.floor(r() * FLOWER_PAIRS.length)].map((k) => c(PAL.bgWildflower[k]))
+    for (let gx = -rad; gx <= rad; gx += G) {
+      for (let gz = -rad; gz <= rad; gz += G) {
+        if (Math.hypot(gx, gz) > rad * (0.7 + 0.3 * r()) || r() < 0.2) continue
+        const k = tones[r() < 0.85 ? 0 : 1]
+        const x = Math.round((cx + gx) / G) * G + (r() - 0.5) * 0.12
+        const z = Math.round((cz + gz) / G) * G + (r() - 0.5) * 0.12
+        const h = 0.11 + 0.07 * r() // half size
+        if (r() < 0.15) b.box(x, y, z, 0.26, 0.16 + 0.12 * r(), 0.26, k, k, 1, 0.12, y)
+        else b.flat(x - h, z - h, x + h, z + h, y + 0.025, k)
+      }
+    }
+  }
+}
+
+/**
+ * Cottage in the corner of a grass field by a lane: a small whitewashed house with a stepped roof and a chimney, its
+ * kitchen garden beside it, a hedge round the back; a lit window at night.
+ */
+function cottage(b: Batch, glow: Batch, ck: Cottage, plan: OutskirtsPlan, c: Paint): void {
+  const s = plan.scale
+  const y = GROUND + FIELD_H.meadow
+  const along = ck.facing[0] === 'z'
+  const W = along ? ck.x1 - ck.x0 : ck.z1 - ck.z0
+  const D = along ? ck.z1 - ck.z0 : ck.x1 - ck.x0
+  const ox = ck.facing === 'x+' ? ck.x1 : ck.facing === 'x-' ? ck.x0 : (ck.x0 + ck.x1) / 2
+  const oz = ck.facing === 'z+' ? ck.z1 : ck.facing === 'z-' ? ck.z0 : (ck.z0 + ck.z1) / 2
+  const L = frame(ox, oz, ck.facing, b)
+  b.flat(ck.x0, ck.z0, ck.x1, ck.z1, y + 0.012, c(PAL.lawn[1]))
+  // House on the left, its door toward the lane down a dirt path.
+  const hu = -0.22 * W
+  const hv = 0.5 * D
+  const hw = Math.min(4.6 * s, 0.42 * W)
+  const hd = Math.min(3.6 * s, 0.4 * D)
+  const hh = 2.6 * s
+  const p0 = L.pt(hu - 0.25 * hw - 0.45 * s, -1.4)
+  const p1 = L.pt(hu - 0.25 * hw + 0.45 * s, hv - hd / 2)
+  b.flat(Math.min(p0.x, p1.x), Math.min(p0.z, p1.z), Math.max(p0.x, p1.x), Math.max(p0.z, p1.z), y + 0.02, c(PAL.bgDirt[2]))
+  L.box(hu, hv, y, hw, hh, hd, c(PAL.bgFarmWall[Math.floor(ck.v * 3) % 3]), null, 0.82)
+  roof(L, hu, hv, y + hh, hw, hd, PAL.bgRoof[Math.floor(ck.v * 5) % PAL.bgRoof.length], c, s)
+  L.box(hu + 0.32 * hw, hv + 0.2 * hd, y + hh, 0.45 * s, 1.3 * s, 0.45 * s, c(PAL.bgChimney), c(PAL.bgChimney, 0.8))
+  // Kitchen garden on the right: a soil bed with rows of greens.
+  const gu = 0.26 * W
+  const gw = 0.34 * W
+  const gd = 0.6 * D
+  L.box(gu, hv, y, gw, 0.06, gd, c(PAL.bgSoil[0]), c(PAL.bgSoil[1]))
+  if (plan.lite) return
+  L.face(b, hu, hv, hw / 2, hd / 2, 'front', -0.25 * hw, y + 0.65 * s, 0.7 * s, 1.3 * s, c(PAL.bgDoor))
+  for (const [side, u] of [['front', 0.2 * hw], ['right', 0]] as const) L.face(b, hu, hv, hw / 2, hd / 2, side, u, y + 1.5 * s, 0.7 * s, 0.75 * s, c(PAL.bgGlass))
+  L.face(glow, hu, hv, hw / 2 + 0.03, hd / 2 + 0.03, 'front', 0.2 * hw, y + 1.5 * s, 0.62 * s, 0.67 * s, col(PAL.bgGlow).multiplyScalar(0.75))
+  for (let i = 0, n = Math.max(2, Math.floor(gw / (0.7 * s))); i < n; i++) {
+    const tone = PAL.bgVeg[i % PAL.bgVeg.length]
+    L.box(gu - gw / 2 + (i + 0.5) * (gw / n), hv, y + 0.06, 0.32 * s, 0.2, gd - 0.6 * s, c(tone, 0.8), c(tone))
+  }
+  // A low hedge round the back and sides; the front stays open to the lane.
+  for (const [u0, v0, u1, v1] of [[-W / 2, D - 0.5, W / 2, D], [-W / 2, 0.6, -W / 2 + 0.5, D - 0.5], [W / 2 - 0.5, 0.6, W / 2, D - 0.5]]) {
+    const a = L.pt(u0, v0)
+    const e = L.pt(u1, v1)
+    b.strip(Math.min(a.x, e.x), Math.min(a.z, e.z), Math.max(a.x, e.x), Math.max(a.z, e.z), y, 0.7, c(PAL.hedge[1]), c(PAL.hedge[2]))
   }
 }
 
