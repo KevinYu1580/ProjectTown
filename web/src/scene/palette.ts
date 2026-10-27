@@ -45,8 +45,19 @@ export const PAL = {
   lamp: 0xffc56b,
   firefly: 0xe6f59a,
 
-  // Countryside around the town (outskirts): warm and calm, a little softer than the town and never an accent, so it
-  // reads as scenery behind the projects.
+  // Background neighbourhood (urban outskirts): desaturated and calmer than the town, never an accent, so it reads as
+  // scenery behind the projects.
+  bgWall: [0xe0d9cb, 0xdcd0b9, 0xcdd3c3, 0xc9d0d4, 0xdbcac0, 0xd5c8ae, 0xd1cec4, 0xdfd4b6],
+  bgHouseRoof: [0x9a7163, 0x6f7887, 0x7b8971, 0x8e7a68, 0x626873, 0x6f8786],
+  bgLawn: [0x7fa25e, 0x88a964, 0x799b5a, 0x8aa86a],
+  bgLane: 0x666a71, // residential lanes: lighter than the town's asphalt
+  bgKerb: 0xb2ada2,
+  bgPlinth: 0x9d978c,
+  bgPath: 0xc9c1b2,
+  bgCar: [0xdcd7cc, 0x8f9ba7, 0xb4806f, 0x7f8e7d, 0xcfbf8e, 0x6d737f, 0x9fb2b6, 0xc2aa9b],
+
+  // Countryside around the town (pastoral outskirts): warm and calm, a little softer than the town and never an accent,
+  // so it reads as scenery behind the projects. Door, glass, chimney and glow colours are shared by both themes.
   bgStone: [0x9a907f, 0xb8ae9b, 0xd3cab7], // terrace wall, gate pillars, bridges, tunnel portals
   bgDirt: [0x9a8163, 0xb39a76, 0xc7b18e], // lanes and farmyards
   bgSand: [0xb9a988, 0xcbbd9c], // river banks

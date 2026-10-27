@@ -1,20 +1,20 @@
-// The town's ground on its terrace: asphalt roads with kerbs, sidewalks, zebra crossings, the garden verge, lamps
-// (emissive bulb + additive ground pool + glow), pocket parks and voxel plants, plus the table under the diorama and the
-// plate's soft shadow on it (the plate and the countryside are outskirts.ts). Static geometry is merged into a few
-// vertex-coloured meshes; plants sway through the shared wind uniform, water ripples on the same clock.
+// The town's ground: asphalt roads with kerbs, sidewalks, zebra crossings, the garden verge, lamps (emissive bulb +
+// additive ground pool + glow), pocket parks and voxel plants, plus the table under the diorama and the plate's soft
+// shadow on it. The surroundings (outskirts/, one per theme) build the rest and say where the town's roads leave it.
+// Static geometry is merged into a few vertex-coloured meshes; plants sway through the shared wind uniform, water
+// ripples on the same clock.
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { fnv1a32 } from '../util/hash'
 import { createRng } from '../util/prng'
 import { flowerBed, hedge, voxelBush, voxelTree } from './flora'
 import { ROAD_WIDTH, SIDEWALK_WIDTH, VERGE_W, type TownLayout } from './layout'
-import { TERRACE_Y, type OutskirtsPlan } from './outskirtsPlan'
 import { PAL } from './palette'
 import { VoxelBuilder, WIND, disposeGeometries, makeVoxelMaterial, material } from './voxel'
 
 const SIDEWALK_H = 0.1
-const ASPHALT_W = ROAD_WIDTH - 2 * SIDEWALK_WIDTH
-const KERB_W = 0.2 // kerb stones line the asphalt edge, just outside every sidewalk
+export const ASPHALT_W = ROAD_WIDTH - 2 * SIDEWALK_WIDTH
+export const KERB_W = 0.2 // kerb stones line the asphalt edge, just outside every sidewalk
 const KERB_H = 0.13
 const LAMP_H = 3.9
 const LAMP_ARM = 0.7
@@ -24,14 +24,35 @@ const LAMP_FADE = 0.1 // level band below 0.5 over which lamps fade in
 
 type Pt = { x: number; z: number }
 
-/** Depth of the diorama's base plate below the town (the plate itself is built with the countryside). */
+/** Depth of the diorama's base plate below the town (the plate itself is built with the surroundings). */
 export const PLATE_H = 3
-// The town stands on its terrace (outskirts plan); the verge sits just above the terrace grass and below the asphalt top (y = 0).
-const GRASS_TOP = TERRACE_Y
+/** Top of the grass around the town (both themes); the verge sits just above it and below the asphalt top (y = 0). */
+export const GRASS_TOP = -0.05
 const VERGE_H = 0.036
 // The verge is multiplied by this at night so the town's own light stays the focus.
 const NIGHT_TINT = new THREE.Color(0.38, 0.45, 0.66)
 const WHITE = new THREE.Color(1, 1, 1)
+
+/**
+ * A town road line running on outside the town, along `axis` from `from` to `to` (one end at the town's edge) on the
+ * line `at`; `walks` are its sidewalk pieces (open where a lane crosses). `tinted` roads take the surround's night tint.
+ */
+export interface RoadExit {
+  axis: 'x' | 'z'
+  at: number
+  from: number
+  to: number
+  walks: Array<[number, number]>
+  tinted: boolean
+}
+
+/** What the surroundings tell the street: the plate (for its shadow on the table) and the roads that leave town. */
+export interface TownEdge {
+  plate: { x0: number; x1: number; z0: number; z1: number }
+  exits: RoadExit[]
+  /** Draws more of the surroundings into the street's night-tinted surround builders and water. */
+  surround?: (outer: VoxelBuilder, outerProps: VoxelBuilder, water: THREE.BufferGeometry[]) => void
+}
 
 /** 0 at level >= 0.5, 1 at level <= 0.5 - LAMP_FADE (smooth in between). */
 function lampAmount(level: number): number {
@@ -68,7 +89,7 @@ export class Street {
   private readonly shadowMat = new THREE.MeshBasicMaterial({
     map: this.shadowTex, color: 0x141c30, transparent: true, opacity: 0.5, depthWrite: false, fog: false,
   })
-  // The verge and its plants share one vertex-colour material that is tinted at night.
+  // The verge, its plants and anything the surroundings add here share one vertex-colour material tinted at night.
   private readonly outerMat = makeVoxelMaterial(0.92)
   private readonly waterMat = makeWaterMaterial()
   private readonly waterBase = new THREE.Color(PAL.water[1])
@@ -97,12 +118,12 @@ export class Street {
     parent.add(this.group)
   }
 
-  build(layout: TownLayout, plan: OutskirtsPlan): void {
+  build(layout: TownLayout, outside: TownEdge): void {
     this.clearContent()
     const content = new THREE.Group()
     const flats = new VoxelBuilder() // town ground: receives shadows only
     const props = new VoxelBuilder() // lamps, town trees, park furniture
-    const outer = new VoxelBuilder(this.outerMat) // verge lawn
+    const outer = new VoxelBuilder(this.outerMat) // verge lawn, tinted exit roads
     const outerProps = new VoxelBuilder(this.outerMat) // verge plants
     const water: THREE.BufferGeometry[] = []
     const { bounds, lotSize, cols, rows, pitch, count } = layout
@@ -146,7 +167,7 @@ export class Street {
     const sizeX = bounds.maxX - bounds.minX
     const sizeZ = bounds.maxZ - bounds.minZ
 
-    // Garden verge around the town on its terrace: a slightly richer lawn than the fields.
+    // Garden verge around the town: a slightly richer lawn than the fields.
     for (const [x0, x1, z0, z1] of [
       [bounds.minX - VERGE_W, bounds.maxX + VERGE_W, bounds.minZ - VERGE_W, bounds.minZ],
       [bounds.minX - VERGE_W, bounds.maxX + VERGE_W, bounds.maxZ, bounds.maxZ + VERGE_W],
@@ -168,27 +189,37 @@ export class Street {
       if (c > from) out.push([from, c])
       return out
     }
-    // The road lines that leave town through a gate run on across the terrace to its wall, where a lane takes over.
-    const t = plan.terrace
-    const gateX = plan.gates.filter((g) => g.axis === 'z').map((g) => g.x)
-    const gateW = plan.gates.filter((g) => g.axis === 'x' && g.x < 0).map((g) => g.z)
-    const gateE = plan.gates.filter((g) => g.axis === 'x' && g.x > 0).map((g) => g.z)
-    for (const x of gateX) {
-      flats.box(x, -0.3, (bounds.maxZ + t.z1) / 2, ASPHALT_W, 0.3, t.z1 - bounds.maxZ, asphalt)
-      for (const s of [-1, 1]) {
-        flats.box(x + s * walkOff, 0, (bounds.maxZ + t.z1) / 2, SIDEWALK_WIDTH, SIDEWALK_H, t.z1 - bounds.maxZ, walk)
-        flats.box(x + s * kerbOff, 0, (bounds.maxZ + t.z1) / 2, KERB_W, KERB_H, t.z1 - bounds.maxZ, kerb)
+    // Road lines that leave town run on to where the surroundings take over; the town's sidewalk ring and verge open
+    // where they leave. Per side of the town: the lines that leave it.
+    const opens = { x0: [] as number[], x1: [] as number[], z0: [] as number[], z1: [] as number[] }
+    for (const e of outside.exits) {
+      const b = e.tinted ? outer : flats
+      const mid = (e.from + e.to) / 2
+      if (e.axis === 'z') {
+        b.box(e.at, -0.3, mid, ASPHALT_W, 0.3, e.to - e.from, asphalt)
+        for (const [a, c] of e.walks) {
+          for (const s of [-1, 1]) {
+            b.box(e.at + s * walkOff, 0, (a + c) / 2, SIDEWALK_WIDTH, SIDEWALK_H, c - a, walk)
+            b.box(e.at + s * kerbOff, 0, (a + c) / 2, KERB_W, KERB_H, c - a, kerb)
+          }
+        }
+        if (e.from >= bounds.maxZ) opens.z1.push(e.at)
+        else opens.z0.push(e.at)
+      } else {
+        b.box(mid, -0.3, e.at, e.to - e.from, 0.3, ASPHALT_W, asphalt)
+        for (const [a, c] of e.walks) {
+          for (const s of [-1, 1]) {
+            b.box((a + c) / 2, 0, e.at + s * walkOff, c - a, SIDEWALK_H, SIDEWALK_WIDTH, walk)
+            b.box((a + c) / 2, 0, e.at + s * kerbOff, c - a, KERB_H, KERB_W, kerb)
+          }
+        }
+        if (e.from >= bounds.maxX) opens.x1.push(e.at)
+        else opens.x0.push(e.at)
       }
     }
-    for (const [zs, from, to] of [...gateW.map((z) => [z, t.x0, bounds.minX]), ...gateE.map((z) => [z, bounds.maxX, t.x1])]) {
-      flats.box((from + to) / 2, -0.3, zs, to - from, 0.3, ASPHALT_W, asphalt)
-      for (const s of [-1, 1]) {
-        flats.box((from + to) / 2, 0, zs + s * walkOff, to - from, SIDEWALK_H, SIDEWALK_WIDTH, walk)
-        flats.box((from + to) / 2, 0, zs + s * kerbOff, to - from, KERB_H, KERB_W, kerb)
-      }
-    }
+    for (const lines of Object.values(opens)) lines.sort((a, c) => a - c)
 
-    // Outer sidewalk ring (kerb on its inner, road side), left open where a road leaves through a gate.
+    // Outer sidewalk ring (kerb on its inner, road side), left open where a road leaves town.
     const verge = (x0: number, z0: number, x1: number, z1: number, alongX: boolean, seed: string): void => {
       // Hedge runs broken by flower beds, on the verge just outside the outer sidewalk.
       const rng = createRng(fnv1a32(seed))
@@ -210,21 +241,21 @@ export class Street {
     const vergeIn = 0.9 // hedge line distance outside the bounds
     for (const s of [-1, 1]) {
       const zRing = midZ + s * (sizeZ / 2 - SIDEWALK_WIDTH / 2)
-      for (const [from, to] of spans(bounds.minX, bounds.maxX, s > 0 ? gateX : [], reach + KERB_W)) {
+      for (const [from, to] of spans(bounds.minX, bounds.maxX, s > 0 ? opens.z1 : opens.z0, reach + KERB_W)) {
         flats.box((from + to) / 2, 0, zRing, to - from, SIDEWALK_H, SIDEWALK_WIDTH, walk)
         flats.box((from + to) / 2, 0, zRing - s * (SIDEWALK_WIDTH / 2 + KERB_W / 2), to - from, KERB_H, KERB_W, kerb)
       }
-      for (const [from, to] of spans(bounds.minZ + SIDEWALK_WIDTH, bounds.maxZ - SIDEWALK_WIDTH, s > 0 ? gateE : gateW, reach + KERB_W)) {
+      for (const [from, to] of spans(bounds.minZ + SIDEWALK_WIDTH, bounds.maxZ - SIDEWALK_WIDTH, s > 0 ? opens.x1 : opens.x0, reach + KERB_W)) {
         const xRing = midX + s * (sizeX / 2 - SIDEWALK_WIDTH / 2)
         flats.box(xRing, 0, (from + to) / 2, SIDEWALK_WIDTH, SIDEWALK_H, to - from, walk)
         flats.box(xRing - s * (SIDEWALK_WIDTH / 2 + KERB_W / 2), 0, (from + to) / 2, KERB_W, KERB_H, to - from, kerb)
       }
       const zv = s < 0 ? bounds.minZ - vergeIn : bounds.maxZ + vergeIn
-      for (const [from, to] of spans(bounds.minX - VERGE_W + 1, bounds.maxX + VERGE_W - 1, s > 0 ? gateX : [], walkOff + SIDEWALK_WIDTH)) {
+      for (const [from, to] of spans(bounds.minX - VERGE_W + 1, bounds.maxX + VERGE_W - 1, s > 0 ? opens.z1 : opens.z0, walkOff + SIDEWALK_WIDTH)) {
         verge(from, zv, to, zv, true, `verge:z${s}:${from.toFixed(1)}`)
       }
       const xv = s < 0 ? bounds.minX - vergeIn : bounds.maxX + vergeIn
-      for (const [from, to] of spans(bounds.minZ, bounds.maxZ, s > 0 ? gateE : gateW, walkOff + SIDEWALK_WIDTH)) {
+      for (const [from, to] of spans(bounds.minZ, bounds.maxZ, s > 0 ? opens.x1 : opens.x0, walkOff + SIDEWALK_WIDTH)) {
         verge(xv, from, xv, to, false, `verge:x${s}:${from.toFixed(1)}`)
       }
     }
@@ -272,11 +303,12 @@ export class Street {
     const ground = flats.build({ receiveShadow: true })
     content.add(ground, props.build({ castShadow: true, receiveShadow: true }))
     // Soft shadow of the plate on the table.
-    const plate = plan.plate
+    const plate = outside.plate
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry((plate.x1 - plate.x0) * 1.12, (plate.z1 - plate.z0) * 1.12).rotateX(-Math.PI / 2), this.shadowMat)
     shadow.position.set((plate.x0 + plate.x1) / 2, -PLATE_H - 0.02, (plate.z0 + plate.z1) / 2)
     shadow.renderOrder = 1
     content.add(shadow)
+    outside.surround?.(outer, outerProps, water)
     content.add(outer.build({ receiveShadow: true }), outerProps.build({ castShadow: true, receiveShadow: true }))
     if (water.length > 0) {
       const merged = mergeGeometries(water, false)

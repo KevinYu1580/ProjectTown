@@ -6,7 +6,7 @@ import {
   BANK, CAP, CLEAR, FROZEN_T, LITE_CAP, MAX_STYLE_HEIGHT, RIPARIAN, TERRACE_W,
   grow, hillTierRadius, inRect, overlaps, planOutskirts, riverSpan, riverX, routePoint, tractorPose, trainPose, viewReach,
   type OutskirtsPlan, type Rect,
-} from '../src/scene/outskirtsPlan'
+} from '../src/scene/outskirts/pastoralPlan'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]

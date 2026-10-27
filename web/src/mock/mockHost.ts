@@ -2,7 +2,7 @@ import type { Locale } from '../i18n'
 import { TownApp } from '../scene/app'
 import { SceneClock } from '../scene/clock'
 import { installDebug } from '../debug'
-import { DEFAULT_SCENE_SETTINGS, type SceneSettings, type ToSwift, type TownState } from '../types'
+import { DEFAULT_SCENE_SETTINGS, type SceneSettings, type SceneTheme, type ToSwift, type TownState } from '../types'
 import { SCENARIO_NAMES, buildScenario, type ScenarioName } from './scenarios'
 
 export interface MockParams {
@@ -10,6 +10,7 @@ export interface MockParams {
   lang: Locale | null
   time: number | null // epoch ms; set = frozen scene time
   seed: number
+  theme: SceneTheme | null
   gui: boolean
 }
 
@@ -29,11 +30,13 @@ export function parseMockParams(search: string): MockParams {
   const lang = q.get('lang')
   const time = q.get('time')
   const seed = Number(q.get('seed'))
+  const theme = q.get('theme')
   return {
     scenario: (SCENARIO_NAMES as readonly string[]).includes(scenario ?? '') ? (scenario as ScenarioName) : 'busy',
     lang: lang === 'en' || lang === 'zh-Hant' ? lang : null,
     time: time !== null && time !== '' && Number.isFinite(Number(time)) ? Number(time) : null,
     seed: q.get('seed') !== null && Number.isFinite(seed) ? seed : 1,
+    theme: theme === 'pastoral' || theme === 'urban' ? theme : null,
     gui: q.get('gui') !== '0',
   }
 }
@@ -46,6 +49,7 @@ export function startMock(root: HTMLElement): void {
     ...DEFAULT_SCENE_SETTINGS,
     camera: { ...DEFAULT_SCENE_SETTINGS.camera, base: { ...DEFAULT_SCENE_SETTINGS.camera.base, target: [0, 0] } },
     ...(params.lang ? { locale: params.lang } : {}),
+    ...(params.theme ? { theme: params.theme } : {}),
     ...scenario.settings,
   }
 

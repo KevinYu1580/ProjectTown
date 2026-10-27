@@ -3,10 +3,11 @@
 // river with two bridges, a railway with a tunnel at each end, dirt lanes from the gates to a few farms, windmills,
 // woods and a pond, and a ring of hills toward the plate edge. It reaches past the frame edges of the default view at
 // every orbit angle and is deterministic for a layout and seed.
-import { fnv1a32 } from '../util/hash'
-import { createRng } from '../util/prng'
-import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from './cameraMath'
-import { VERGE_W, type TownLayout } from './layout'
+import { fnv1a32 } from '../../util/hash'
+import { createRng } from '../../util/prng'
+import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../cameraMath'
+import { VERGE_W, type TownLayout } from '../layout'
+import type { RoadExit } from '../street'
 
 const DEG = Math.PI / 180
 /** Tallest building style (the clock tower, 18.8) rounded up: the view is sized for the tallest possible town. */
@@ -92,6 +93,7 @@ export interface OutskirtsPlan {
   plate: Rect
   terrace: Rect
   gates: Gate[]
+  exits: RoadExit[] // the gate roads across the terrace (street.ts)
   lanes: Lane[]
   river: River
   bridges: Bridge[]
@@ -623,6 +625,11 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     plate,
     terrace: t,
     gates,
+    exits: gates.map((g): RoadExit => {
+      if (g.axis === 'z') return { axis: 'z', at: g.x, from: b.maxZ, to: t.z1, walks: [[b.maxZ, t.z1]], tinted: false }
+      const [from, to] = g.x < 0 ? [t.x0, b.minX] : [b.maxX, t.x1]
+      return { axis: 'x', at: g.z, from, to, walks: [[from, to]], tinted: false }
+    }),
     lanes,
     river,
     bridges,

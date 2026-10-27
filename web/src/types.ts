@@ -46,12 +46,17 @@ export interface CameraSettings {
   base: CameraBase
 }
 
+/** What surrounds the town: countryside (pastoral) or a neighbourhood (urban). */
+export type SceneTheme = 'pastoral' | 'urban'
+
 export interface SceneSettings {
   locale: 'zh-Hant' | 'en'
   fps: 15 | 30 | 60 | 120
   hudVisible: boolean
   hideSessionNames: boolean
+  theme: SceneTheme
   depthOfField: boolean
+  depthOfFieldStrength: number // multiplies the blur: 1 is the default look
   dayNight: DayNightSettings
   camera: CameraSettings
 }
@@ -81,7 +86,9 @@ export const DEFAULT_SCENE_SETTINGS: SceneSettings = {
   fps: 60,
   hudVisible: true,
   hideSessionNames: true,
+  theme: 'pastoral',
   depthOfField: true,
+  depthOfFieldStrength: 1,
   dayNight: { mode: 'realtime', sunrise: '06:00', sunset: '18:00' },
   camera: {
     mode: 'fixed',

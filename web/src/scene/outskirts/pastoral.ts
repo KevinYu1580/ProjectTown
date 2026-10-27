@@ -1,4 +1,4 @@
-// Countryside around the town (placement in outskirtsPlan.ts). Static parts go into one vertex-coloured mesh that is
+// Pastoral theme: countryside around the town (placement in pastoralPlan.ts). Static parts go into one vertex-coloured mesh that is
 // tinted at night: the terrace wall with its gates and avenue, lanes, patchwork fields with crop rows, hedgerows, the
 // river banks and bridges, the railway and its tunnel portals, farms, windmill towers, woods, animals and the hills.
 // The river and the pond use the water material; sparse warm windows and lanterns share one additive mesh. Moving
@@ -6,13 +6,14 @@
 // person or carries a sign: people stand for sessions and signs for projects. Moving parts follow an animation clock
 // that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs redrawing.
 import * as THREE from 'three'
+import type { TownLayout } from '../layout'
+import { PAL } from '../palette'
+import { PLATE_H, makeWaterMaterial, type TownEdge } from '../street'
+import { makeVoxelMaterial } from '../voxel'
 import {
-  BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, hillTierRadius, riverX, tractorPose, trainPose,
+  BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, hillTierRadius, planOutskirts, riverX, tractorPose, trainPose,
   type Bridge, type Facing, type Farm, type Field, type Hill, type OutskirtsPlan, type Rect, type TrainPose, type Tree, type Windmill,
-} from './outskirtsPlan'
-import { PAL } from './palette'
-import { PLATE_H, makeWaterMaterial } from './street'
-import { makeVoxelMaterial } from './voxel'
+} from './pastoralPlan'
 
 const GROUND = COUNTRY_Y
 const LANE_Y = GROUND + 0.03
@@ -218,7 +219,9 @@ export class Outskirts {
     parent.add(this.root)
   }
 
-  build(plan: OutskirtsPlan): void {
+  /** Plans and builds the countryside around `layout`; the street draws the gate roads across the terrace. */
+  build(layout: TownLayout, opts: { seed: number; lite: boolean }): TownEdge & { glows: Array<{ x: number; z: number }> } {
+    const plan = planOutskirts(layout, opts)
     this.clear()
     this.plan = plan
     const content = new THREE.Group()
@@ -319,6 +322,7 @@ export class Outskirts {
     this.root.add(content)
     this.poseMoving()
     this.setLightLevel(this.level)
+    return { plate: plan.plate, exits: plan.exits, glows: plan.glows }
   }
 
   setLightLevel(level: number): void {

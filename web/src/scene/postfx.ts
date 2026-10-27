@@ -146,6 +146,8 @@ class HalfResBloomPass extends UnrealBloomPass {
  */
 class ScenePass extends ShaderPass {
   private readonly target: THREE.WebGLRenderTarget
+  private height = 1
+  private k = 1
 
   constructor(
     private readonly scene: THREE.Scene,
@@ -175,6 +177,12 @@ class ScenePass extends ShaderPass {
     this.uniforms.blur.value = on
   }
 
+  /** Multiplies both blur limits (the settings' depth-of-field strength). */
+  set strength(k: number) {
+    this.k = k
+    this.updateMaxBlur()
+  }
+
   /** View depth of the sharp zone's near and far edges. */
   setFocus(near: number, far: number): void {
     this.uniforms.focus.value.set(near, far)
@@ -183,7 +191,12 @@ class ScenePass extends ShaderPass {
 
   override setSize(width: number, height: number): void {
     this.target.setSize(width, height)
-    this.uniforms.maxBlur.value.set(height * MAX_NEAR_BLUR, height * MAX_BLUR)
+    this.height = height
+    this.updateMaxBlur()
+  }
+
+  private updateMaxBlur(): void {
+    this.uniforms.maxBlur.value.set(this.height * MAX_NEAR_BLUR * this.k, this.height * MAX_BLUR * this.k)
   }
 
   override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, ...rest: [THREE.WebGLRenderTarget, number, boolean]): void {
@@ -232,10 +245,11 @@ export class PostFX {
     for (const p of this.passes) this.composer.addPass(p)
   }
 
-  /** Off removes both blur passes from the pipeline. */
-  setDepthOfField(on: boolean): void {
+  /** Off removes both blur passes from the pipeline; `strength` multiplies the blur (1: the default look). */
+  setDepthOfField(on: boolean, strength = 1): void {
     for (const p of this.dof) p.enabled = on
     this.scenePass.blur = on
+    this.scenePass.strength = strength
   }
 
   /** The town's ground bounds and the height of its tallest building with its sign: all of it stays sharp. */

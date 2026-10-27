@@ -20,7 +20,9 @@ interface Model {
   fps: SceneSettings['fps']
   hudVisible: boolean
   hideSessionNames: boolean
+  theme: SceneSettings['theme']
   depthOfField: boolean
+  depthOfFieldStrength: number
   dayMode: 'realtime' | 'cycle'
   sunrise: string
   sunset: string
@@ -60,7 +62,9 @@ export function setupGui(ctx: MockContext): void {
     fps: ctx.settings.fps,
     hudVisible: ctx.settings.hudVisible,
     hideSessionNames: ctx.settings.hideSessionNames,
+    theme: ctx.settings.theme,
     depthOfField: ctx.settings.depthOfField,
+    depthOfFieldStrength: ctx.settings.depthOfFieldStrength,
     dayMode: dn.mode,
     sunrise: dn.mode === 'realtime' ? dn.sunrise : '06:00',
     sunset: dn.mode === 'realtime' ? dn.sunset : '18:00',
@@ -85,7 +89,9 @@ export function setupGui(ctx: MockContext): void {
     fps: m.fps,
     hudVisible: m.hudVisible,
     hideSessionNames: m.hideSessionNames,
+    theme: m.theme,
     depthOfField: m.depthOfField,
+    depthOfFieldStrength: m.depthOfFieldStrength,
     dayNight:
       m.dayMode === 'realtime'
         ? { mode: 'realtime', sunrise: m.sunrise, sunset: m.sunset }
@@ -184,7 +190,9 @@ export function setupGui(ctx: MockContext): void {
   scene.add(m, 'fps', [15, 30, 60, 120]).name('FPS').onChange(push)
   scene.add(m, 'hudVisible').name('HUD').onChange(push)
   scene.add(m, 'hideSessionNames').name('hide session names').onChange(push)
+  scene.add(m, 'theme', ['pastoral', 'urban']).name('theme').onChange(push)
   scene.add(m, 'depthOfField').name('depth of field').onChange(push)
+  scene.add(m, 'depthOfFieldStrength', 0.25, 2, 0.05).name('blur strength').onChange(push)
 
   // Camera
   const camera = gui.addFolder('Camera')
