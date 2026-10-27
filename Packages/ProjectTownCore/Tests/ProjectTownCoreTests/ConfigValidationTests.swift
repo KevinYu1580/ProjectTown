@@ -124,6 +124,36 @@ final class ConfigValidationTests: XCTestCase {
         XCTAssertEqual(issues { $0.camera.base.zoom = 3.01 }, [.cameraZoom(3.01)])
     }
 
+    func testDepthOfFieldStrengthBoundaries() {
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0.25 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 2 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0.24 }, [.depthOfFieldStrength(0.24)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 2.01 }, [.depthOfFieldStrength(2.01)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = 0 }, [.depthOfFieldStrength(0)])
+        XCTAssertEqual(issues { $0.depthOfFieldStrength = .nan }.count, 1)
+    }
+
+    func testDepthOfFieldRangeBoundaries() {
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0.45 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = -0.01 }, [.depthOfFieldRange(-0.01)])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0.46 }, [.depthOfFieldRange(0.46)])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = .nan }.count, 1)
+    }
+
+    func testRepairedResetsOnlyBlurStrength() {
+        let config = AppConfig(fps: 30, theme: .urban, depthOfField: false, depthOfFieldStrength: 5, depthOfFieldRange: 0.9,
+                               wallpaperSnapshot: false)
+        let repaired = config.repaired()
+        XCTAssertEqual(repaired.validate(), [])
+        XCTAssertEqual(repaired.depthOfFieldStrength, 0.6)
+        XCTAssertEqual(repaired.depthOfFieldRange, 0.25)
+        XCTAssertEqual(repaired.theme, .urban)
+        XCTAssertFalse(repaired.depthOfField)
+        XCTAssertFalse(repaired.wallpaperSnapshot)
+        XCTAssertEqual(repaired.fps, 30)
+    }
+
     func testMultipleIssuesAreAllReported() {
         let result = issues {
             $0.fps = 7
@@ -134,7 +164,7 @@ final class ConfigValidationTests: XCTestCase {
     }
 
     func testRepairedKeepsValidSettingsAndResetsOnlyOffendingGroups() {
-        var config = AppConfig(projects: [ProjectConfig(path: "/a", name: "a")], fps: 30, hudVisible: false, displayUUID: "ABC")
+        var config = AppConfig(projects: [ProjectConfig(path: "/a", name: "a")], fps: 30, hudVisible: true, displayUUID: "ABC")
         config.camera.mode = .continuous
         config.camera.base = CameraBase(azimuthDeg: 200, pitchDeg: 50, zoom: 2, target: [1, 2])
         config.sleepThresholdMinutes = 5
@@ -150,7 +180,7 @@ final class ConfigValidationTests: XCTestCase {
         // Everything else survives.
         XCTAssertEqual(repaired.projects, config.projects)
         XCTAssertEqual(repaired.fps, 30)
-        XCTAssertFalse(repaired.hudVisible)
+        XCTAssertTrue(repaired.hudVisible)
         XCTAssertEqual(repaired.displayUUID, "ABC")
         XCTAssertEqual(repaired.camera, config.camera)
     }

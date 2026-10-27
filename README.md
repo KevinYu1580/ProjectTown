@@ -24,10 +24,11 @@ When a session ends, its person walks out to the road and off the map.
 
 **The town**
 
-- A quiet neighbourhood of small houses, gardens and cars driving the lanes surrounds the town, so the whole desktop is filled at any camera angle. It never has signs or people, so it is never mistaken for your projects.
+- The town stands on a low terrace ringed by a white picket fence, in open countryside: meadows and pastures with grazing sheep, cottages and groves close by, patchwork fields further out, a river with two bridges, a small train that passes now and then, windmills, a few farms and hills all around, so the whole desktop is filled at any camera angle. Nothing out there has a sign or a person, so it is never mistaken for your projects.
+- Prefer a city? Set the theme to **City** (Settings → Appearance) and the town sits in a varied neighbourhood instead: houses of many sizes, row houses, small apartment blocks, corner shops, a school, a church, parks and parking lots.
 - Ten building styles (office, factory, café, bookstore, lab, warehouse, radio tower, greenhouse, clock tower, ramen shop), picked automatically or chosen per project, with your project color as an accent.
 - A glowing sign above each building with the project name and per-state counts, plus "+N" when more people are inside than fit on screen.
-- A HUD panel in the bottom-left corner with the session counts of every project. You can turn it off.
+- A HUD panel in the bottom-left corner with the session counts of every project. It is off by default; turn it on in Settings → Appearance.
 - Session names and "last active" times above each person, hidden by default for privacy.
 
 **Day and night**
@@ -41,12 +42,13 @@ When a session ends, its person walks out to the road and off the map.
 
 - **Fixed** (default), **Interval** (turns 90° every few minutes), or **Continuous** (a slow orbit, one turn per hour by default).
 - **Adjust View** (menu bar or Settings): rotate, zoom and pan the town right on your desktop, then save.
-- Tilt-shift depth of field for the miniature look (can be turned off).
+- Depth-of-field blur for the miniature look: the scenery behind the town blurs more the farther away it is, and a band along the top and the bottom of the screen blurs too, with adjustable strength (25–200%, 60% by default) and range (0–45% of the screen height, 25% by default). The town itself always stays sharp. It can be turned off.
+- **Show the town while switching desktops** (on by default): macOS sometimes shows the system wallpaper for a moment while you switch desktops or open Mission Control. With this option ProjectTown sets the system wallpaper to a recent snapshot of the town, so you see the town instead. Turning it off puts your own wallpaper back.
 
 **Light on resources**
 
 - Rendering pauses completely while the desktop is covered (for example by a full-screen app), while the screens sleep, and while you are switched to another user.
-- Frame-rate limit: 15, 30 or 60 FPS (default 60).
+- Frame-rate limit: 15, 30 or 60 FPS (default 15).
 
 ## Requirements
 
@@ -91,7 +93,7 @@ No hooks are needed, and ProjectTown never writes to `~/.claude`.
 - Everything happens on your Mac. ProjectTown makes no network connections.
 - It reads only `~/.claude/sessions/*.json` (session ID, working directory, status, name and timestamps) and its own settings file. It never reads your conversations, prompts or transcripts, and it never writes to `~/.claude`.
 - Session names are hidden on the wallpaper by default (Settings → Status → Hide session names).
-- Settings are stored in `~/Library/Application Support/ProjectTown/config.json`.
+- Settings are stored in `~/Library/Application Support/ProjectTown/config.json`. Wallpaper snapshots, and a note of the wallpaper each desktop had before, are kept in `~/Library/Application Support/ProjectTown/Wallpaper/`.
 
 ## Known limitations
 

@@ -72,9 +72,45 @@ struct AppearanceTab: View {
             }
 
             Section(String(localized: "Display")) {
-                Toggle(String(localized: "Tilt-shift blur"), isOn: Binding(
+                Picker(String(localized: "Theme"), selection: Binding(
+                    get: { config.theme },
+                    set: { theme in store.update { $0.theme = theme } }
+                )) {
+                    Text(String(localized: "Countryside")).tag(SceneTheme.pastoral)
+                    Text(String(localized: "City")).tag(SceneTheme.urban)
+                }
+                .pickerStyle(.segmented)
+                Toggle(String(localized: "Depth-of-field blur"), isOn: Binding(
                     get: { config.depthOfField }, set: { value in store.update { $0.depthOfField = value } }
                 ))
+                LabeledContent(String(localized: "Blur strength")) {
+                    HStack {
+                        Slider(value: Binding(
+                            get: { (config.depthOfFieldStrength * 100).rounded() },
+                            set: { percent in store.update { $0.depthOfFieldStrength = percent / 100 } }
+                        ), in: ConfigLimits.depthOfFieldStrength.lowerBound * 100...ConfigLimits.depthOfFieldStrength.upperBound * 100,
+                           step: 5)
+                        .frame(width: 180)
+                        Text("\(Int((config.depthOfFieldStrength * 100).rounded()))%")
+                            .monospacedDigit()
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
+                .disabled(!config.depthOfField)
+                LabeledContent(String(localized: "Blur range")) {
+                    HStack {
+                        Slider(value: Binding(
+                            get: { (config.depthOfFieldRange * 100).rounded() },
+                            set: { percent in store.update { $0.depthOfFieldRange = percent / 100 } }
+                        ), in: ConfigLimits.depthOfFieldRange.lowerBound * 100...ConfigLimits.depthOfFieldRange.upperBound * 100,
+                           step: 5)
+                        .frame(width: 180)
+                        Text("\(Int((config.depthOfFieldRange * 100).rounded()))%")
+                            .monospacedDigit()
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                }
+                .disabled(!config.depthOfField)
                 Toggle(String(localized: "Show HUD"), isOn: Binding(
                     get: { config.hudVisible }, set: { value in store.update { $0.hudVisible = value } }
                 ))
@@ -91,6 +127,11 @@ struct AppearanceTab: View {
                         }
                     }
                 }
+                Toggle(String(localized: "Show the town while switching desktops"), isOn: Binding(
+                    get: { config.wallpaperSnapshot }, set: { value in store.update { $0.wallpaperSnapshot = value } }
+                ))
+                Text(String(localized: "Sets the system wallpaper to a snapshot of the town, so switching desktops or opening Mission Control no longer flashes your old wallpaper. Turning this off puts your wallpaper back."))
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, cameraPosition, fitDistance } from '../src/scene/cameraMath'
 import { ROAD_WIDTH, VERGE_W, computeLayout, type TownLayout } from '../src/scene/layout'
 import {
-  CAP, CAR_OFFSET, LANE_HALF, LANE_W, LITE_CAP, MAIN_HALF, MAX_STYLE_HEIGHT,
-  carPose, footprint, inHood, overlaps, planOutskirts, routePoint, viewReach,
+  CAP, CAR_OFFSET, HEIGHT_CAP, LANE_HALF, LANE_W, LITE_CAP, MAIN_HALF, MAX_STYLE_HEIGHT,
+  carPose, footprint, inHood, overlaps, planOutskirts, roofRise, routePoint, viewReach,
   type OutskirtsPlan, type Rect,
-} from '../src/scene/outskirtsPlan'
+} from '../src/scene/outskirts/urbanPlan'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]
@@ -54,6 +54,11 @@ const verge = (layout: TownLayout): Rect => {
   return { x0: b.minX - VERGE_W, x1: b.maxX + VERGE_W, z0: b.minZ - VERGE_W, z1: b.maxZ + VERGE_W }
 }
 const inRect = (r: Rect, x: number, z: number, pad = 0) => x > r.x0 - pad && x < r.x1 + pad && z > r.z0 - pad && z < r.z1 + pad
+/** Ring of the grid cell at (x, z): 1 next to the town, counting outward in lane pitches. */
+const ringAt = (layout: TownLayout, x: number, z: number): number => Math.max(
+  Math.ceil((Math.abs(x) - (layout.cols / 2) * layout.pitch) / layout.pitch),
+  Math.ceil((Math.abs(z) - (layout.rows / 2) * layout.pitch) / layout.pitch),
+)
 
 describe('viewReach', () => {
   it('is the farthest ground point of the default view, for the tallest town, at any azimuth', () => {
@@ -119,7 +124,7 @@ describe('planOutskirts', () => {
     }
   })
 
-  it('keeps houses, trees and parked cars off the town, its verge and every street', () => {
+  it('keeps houses, trees, parked cars and open spaces off the town, its verge, every street and each other', () => {
     for (const n of COUNTS) {
       const layout = computeLayout(n)
       for (const lite of [false, true]) {
@@ -138,7 +143,62 @@ describe('planOutskirts', () => {
           if (hit) bad.push(`tree/car ${t.x.toFixed(1)},${t.z.toFixed(1)}`)
         }
         for (const b of p.blocks) if (overlaps(b, garden) || roads.some((r) => overlaps(b, r, -1e-6))) bad.push(`block ${b.x0.toFixed(1)},${b.z0.toFixed(1)}`)
+        p.pads.forEach((pad, i) => {
+          const at = `${pad.kind} ${pad.x0.toFixed(1)},${pad.z0.toFixed(1)}`
+          if (!p.blocks.some((b) => b.x0 <= pad.x0 + 1e-6 && pad.x1 <= b.x1 + 1e-6 && b.z0 <= pad.z0 + 1e-6 && pad.z1 <= b.z1 + 1e-6)) bad.push(`pad outside its block: ${at}`)
+          if (houses.some((fp) => overlaps(fp, pad, -1e-6))) bad.push(`pad under a house: ${at}`)
+          if (p.pads.some((o, j) => j > i && overlaps(o, pad, -1e-6))) bad.push(`pads overlap: ${at}`)
+          if (p.trees.some((t) => inRect(pad, t.x, t.z))) bad.push(`tree on a pad: ${at}`)
+        })
         expect(bad, `n=${n} lite=${lite}`).toEqual([])
+      }
+    }
+  })
+
+  it('keeps the town the tallest thing nearby: buildings grow taller only farther out, landmarks are rare', () => {
+    // In the two rings round the town nothing reaches the lowest town building style (the warehouse, 6.15 at scale 1).
+    expect(HEIGHT_CAP[1]).toBeLessThan(6.15)
+    expect(HEIGHT_CAP[2]).toBeLessThan(6.15)
+    for (const n of [...COUNTS, 36]) {
+      const layout = computeLayout(n)
+      for (const seed of [1, 2, 3]) {
+        const p = plan(n, seed)
+        const bad: string[] = []
+        for (const h of p.houses) {
+          const ring = ringAt(layout, h.x, h.z)
+          const top = h.h + roofRise(h) * p.scale
+          if (top > HEIGHT_CAP[Math.min(ring, 4)] * p.scale + 1e-6) bad.push(`${h.kind} ring ${ring}: ${(top / p.scale).toFixed(2)}`)
+          if (['flats', 'school', 'church', 'tower'].includes(h.kind) && ring < 3) bad.push(`${h.kind} in ring ${ring}`)
+        }
+        const count = (kind: string) => p.houses.filter((h) => h.kind === kind).length
+        expect(count('church'), `n=${n} seed=${seed}`).toBeLessThanOrEqual(2)
+        expect(count('tower')).toBe(count('church'))
+        expect(count('school'), `n=${n} seed=${seed}`).toBeLessThanOrEqual(3)
+        expect(bad, `n=${n} seed=${seed}`).toEqual([])
+      }
+    }
+  })
+
+  it('mixes building kinds, sizes, setbacks, roofs, colours and open spaces', () => {
+    for (const n of [1, 6, 25]) {
+      for (const seed of [1, 4]) {
+        const p = plan(n, seed)
+        const at = `n=${n} seed=${seed}`
+        const kinds = new Set(p.houses.map((h) => h.kind))
+        for (const k of ['house', 'terrace', 'shop', 'flats', 'works'] as const) expect(kinds.has(k), `${at} ${k}`).toBe(true)
+        expect(new Set(p.pads.map((q) => q.kind)).size, at).toBeGreaterThanOrEqual(5)
+        const homes = p.houses.filter((h) => h.kind === 'house')
+        expect(new Set(homes.map((h) => h.roof)).size, at).toBe(5)
+        expect(new Set(homes.map((h) => h.wall)).size, at).toBeGreaterThanOrEqual(10)
+        expect(homes.some((h) => h.annex !== 0), at).toBe(true)
+        // Widths and setbacks (front wall to the street edge) spread out rather than repeat.
+        const spread = (v: number[]) => {
+          const mean = v.reduce((a, b) => a + b, 0) / v.length
+          return Math.sqrt(v.reduce((a, b) => a + (b - mean) ** 2, 0) / v.length) / mean
+        }
+        expect(spread(homes.map((h) => h.w)), at).toBeGreaterThan(0.15)
+        expect(spread(homes.map((h) => Math.abs(h.front - (h.facing[0] === 'z' ? h.z : h.x)) - h.d / 2)), at).toBeGreaterThan(0.2)
+        expect(new Set(p.blocks.map((b) => b.kind)).size, at).toBeGreaterThanOrEqual(6)
       }
     }
   })
@@ -195,6 +255,7 @@ describe('planOutskirts', () => {
       expect(lite.cars.length).toBeLessThanOrEqual(LITE_CAP.cars)
       expect(lite.parked).toEqual([])
       expect(lite.houses.every((h) => h.lod === 2 && h.lights === 0)).toBe(true)
+      expect(lite.pads.every((q) => q.lod === 2)).toBe(true)
       expect(lite.routes.length).toBe(1)
       // Same streets and plate either way; lite keeps the houses nearest the town.
       expect(lite.plate).toEqual(full.plate)

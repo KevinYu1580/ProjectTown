@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { DRAWN_ON_TOP } from '../postfx'
 
 // Screen-space sprites (sizeAttenuation off) keep their pixel size at any zoom: one scale unit = PX pixels
 // at a 982 px tall viewport with the 30 degree FOV.
@@ -141,7 +142,7 @@ export class Effects {
   private readonly bubble = bubbleTexture()
   // Drawn on top and at a fixed screen size: the "!" must be the most visible thing wherever the person stands.
   private readonly bangMat = new THREE.SpriteMaterial({
-    map: this.bubble, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false,
+    map: this.bubble, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP,
   })
   private readonly ringMat = new THREE.MeshBasicMaterial({
     color: 0x45ff80, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2,
@@ -160,7 +161,7 @@ export class Effects {
   /** Spinning gear: a screen-space sprite drawn on top (desks sit behind the storefront, which hides the head). */
   makeGear(): THREE.Sprite {
     const mat = new THREE.SpriteMaterial({
-      map: this.gearTex, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false,
+      map: this.gearTex, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP,
     })
     mat.color.setScalar(1 + 0.4 * this.night)
     this.gearMats.add(mat)
@@ -327,7 +328,7 @@ export class SleepZ {
   ) {
     this.sprites = ZZ_SIZE_PX.map((_, i) => {
       const map = textures[i === 0 ? 0 : 1]
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false }))
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP }))
       parent.add(s)
       return s
     })

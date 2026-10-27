@@ -11,8 +11,7 @@ import { CharacterManager } from './characters/manager'
 import type { SceneClock } from './clock'
 import { computeLayout, type TownLayout } from './layout'
 import { Lot, LOT_Y } from './lot'
-import { Outskirts } from './outskirts'
-import { planOutskirts } from './outskirtsPlan'
+import { createSurroundings, type Surroundings } from './outskirts'
 import { PAL } from './palette'
 import { PostFX } from './postfx'
 import { RenderLoop } from './loop'
@@ -57,7 +56,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
   private readonly postfx: PostFX
   private readonly sky: Sky
   private readonly street: Street
-  private readonly outskirts: Outskirts
+  private outskirts: Surroundings
   private readonly ambient: Ambient
   private readonly characters: CharacterManager
   private readonly hud: Hud
@@ -92,7 +91,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.lite = lite
     this.sky = new Sky(this.scene, this.renderer, !lite)
     this.street = new Street(this.scene)
-    this.outskirts = new Outskirts(this.scene)
+    this.outskirts = createSurroundings(this.settings.theme, this.scene)
     this.ambient = new Ambient(this.scene)
     this.rig = new CameraRig(window.innerWidth / window.innerHeight)
     this.postfx = new PostFX(this.renderer, this.scene, this.rig.camera, lite)
@@ -150,9 +149,15 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
   }
 
   applySettings(s: SceneSettings): void {
+    const themeChanged = s.theme !== this.settings.theme
     this.settings = s
     this.loop.setFps(s.fps)
-    this.postfx.setDepthOfField(s.depthOfField)
+    this.postfx.setDepthOfField(s.depthOfField, s.depthOfFieldStrength, s.depthOfFieldRange)
+    if (themeChanged) {
+      this.outskirts.dispose()
+      this.outskirts = createSurroundings(s.theme, this.scene)
+      this.applyLayout(this.layout)
+    }
     this.rig.applySettings(s.camera)
     this.rig.setLocale(s.locale)
     this.applyLight(true)
@@ -289,11 +294,10 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
 
   private applyLayout(layout: TownLayout): void {
     this.layout = layout
-    // The background neighbourhood fills the view around the town; its plan also sizes the street's base plate.
-    const outskirts = planOutskirts(layout, { seed: this.seed, lite: this.lite })
-    this.street.build(layout, outskirts)
-    this.outskirts.build(outskirts)
-    this.ambient.build(layout)
+    // The surroundings fill the view around the town; they also size the plate and say where the roads leave town.
+    const edge = this.outskirts.build(layout, { seed: this.seed, lite: this.lite })
+    this.street.build(layout, edge)
+    this.ambient.build(layout, edge.glows)
     this.maxHeight = -1
     this.refit()
     this.updateEmptyPatch()
@@ -306,6 +310,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.maxHeight = tallest
     this.rig.setTownBounds(this.layout.bounds, tallest)
     this.sky.setTownBounds(this.layout.bounds, tallest)
+    this.postfx.setTownBounds(this.layout.bounds, tallest)
   }
 
   private updateEmptyPatch(): void {

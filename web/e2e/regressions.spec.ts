@@ -89,3 +89,27 @@ test('people who leave while rendering is paused are reclaimed immediately', asy
   await setState(page, town(office([session('b', 'running')])));
   expect((await characters(page)).map((c) => c.id)).toEqual(['b']);
 });
+
+test('switching the theme rebuilds the surroundings and frees the old ones', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await open(page, 'scenario=busy&time=1792987200000');
+  const setTheme = (theme: 'pastoral' | 'urban') =>
+    page.evaluate((t) => {
+      const d = window.__projectTownDebug!;
+      d.applySettings({ ...d.getSettings(), theme: t });
+    }, theme);
+  const info = () => page.evaluate(() => window.__projectTownDebug!.renderInfo());
+  await page.waitForTimeout(500);
+  const pastoral = await info();
+  await setTheme('urban');
+  await page.waitForTimeout(500);
+  const urban = await info();
+  expect(urban.triangles).not.toBe(pastoral.triangles);
+  await setTheme('pastoral');
+  await page.waitForTimeout(500);
+  const back = await info();
+  expect(back.triangles).toBe(pastoral.triangles);
+  expect(back.geometries).toBe(pastoral.geometries);
+  expect(errors).toEqual([]);
+});

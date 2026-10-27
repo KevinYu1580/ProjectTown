@@ -55,7 +55,10 @@ public struct SceneSettings: Codable, Sendable, Equatable {
     public var fps: Int
     public var hudVisible: Bool
     public var hideSessionNames: Bool
+    public var theme: SceneTheme
     public var depthOfField: Bool
+    public var depthOfFieldStrength: Double
+    public var depthOfFieldRange: Double
     public var dayNight: DayNight
     public var camera: CameraConfig
 
@@ -70,7 +73,8 @@ public struct SceneSettings: Codable, Sendable, Equatable {
         }
         return SceneSettings(
             locale: locale, fps: config.fps, hudVisible: config.hudVisible, hideSessionNames: config.hideSessionNames,
-            depthOfField: config.depthOfField, dayNight: dayNight, camera: config.camera
+            theme: config.theme, depthOfField: config.depthOfField, depthOfFieldStrength: config.depthOfFieldStrength,
+            depthOfFieldRange: config.depthOfFieldRange, dayNight: dayNight, camera: config.camera
         )
     }
 }

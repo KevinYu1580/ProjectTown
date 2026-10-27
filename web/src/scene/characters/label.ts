@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { DRAWN_ON_TOP } from '../postfx'
 import { PX } from './effects'
 
 const CSS_W = 440
@@ -24,7 +25,7 @@ export class NameLabel {
     this.texture = new THREE.CanvasTexture(this.canvas)
     this.texture.colorSpace = THREE.SRGBColorSpace
     this.sprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({ map: this.texture, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false }),
+      new THREE.SpriteMaterial({ map: this.texture, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP }),
     )
     this.sprite.center.set(0.5, 0)
     this.setUnit(1)

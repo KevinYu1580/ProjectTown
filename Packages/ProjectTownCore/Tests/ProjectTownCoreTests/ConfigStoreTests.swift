@@ -17,10 +17,14 @@ final class ConfigStoreTests: XCTestCase {
         let c = AppConfig()
         XCTAssertEqual(c.version, 1)
         XCTAssertEqual(c.projects, [])
-        XCTAssertEqual(c.fps, 60)
-        XCTAssertTrue(c.hudVisible)
+        XCTAssertEqual(c.fps, 15)
+        XCTAssertFalse(c.hudVisible)
         XCTAssertTrue(c.hideSessionNames)
+        XCTAssertEqual(c.theme, .pastoral)
         XCTAssertTrue(c.depthOfField)
+        XCTAssertEqual(c.depthOfFieldStrength, 0.6)
+        XCTAssertEqual(c.depthOfFieldRange, 0.25)
+        XCTAssertTrue(c.wallpaperSnapshot)
         XCTAssertEqual(c.finishedWindowMinutes, 30)
         XCTAssertEqual(c.sleepThresholdMinutes, 120)
         XCTAssertEqual(c.dayNight, DayNightConfig(mode: .realtime, sunrise: "06:00", sunset: "18:00", cyclePeriodMinutes: 60, dayRatio: 0.5))
@@ -49,9 +53,14 @@ final class ConfigStoreTests: XCTestCase {
         _ = store.load()
         let json = try jsonObject(at: url)
         XCTAssertEqual(Set(json.keys), [
-            "version", "projects", "fps", "hudVisible", "hideSessionNames", "depthOfField",
-            "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight", "camera", "displayUUID",
+            "version", "projects", "fps", "hudVisible", "hideSessionNames", "theme", "depthOfField",
+            "depthOfFieldStrength", "depthOfFieldRange", "wallpaperSnapshot", "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight",
+            "camera", "displayUUID",
         ])
+        XCTAssertEqual(json["theme"] as? String, "pastoral")
+        XCTAssertEqual(json["depthOfFieldStrength"] as? Double, 0.6)
+        XCTAssertEqual(json["depthOfFieldRange"] as? Double, 0.25)
+        XCTAssertEqual(json["wallpaperSnapshot"] as? Bool, true)
         let dayNight = try XCTUnwrap(json["dayNight"] as? [String: Any])
         XCTAssertEqual(Set(dayNight.keys), ["mode", "sunrise", "sunset", "cyclePeriodMinutes", "dayRatio"])
         XCTAssertEqual(dayNight["mode"] as? String, "realtime")
@@ -70,8 +79,9 @@ final class ConfigStoreTests: XCTestCase {
                 ProjectConfig(path: "/a/foo", name: "Foo", color: "#112233", buildingStyle: "cafe"),
                 ProjectConfig(path: "/a/bar baz", name: "Bar", color: "#445566", buildingStyle: "auto"),
             ],
-            fps: 120, hudVisible: false, hideSessionNames: false, depthOfField: false,
-            finishedWindowMinutes: 15, sleepThresholdMinutes: 60,
+            fps: 120, hudVisible: false, hideSessionNames: false, theme: .urban, depthOfField: false,
+            depthOfFieldStrength: 1.65, depthOfFieldRange: 0.4, wallpaperSnapshot: false, finishedWindowMinutes: 15,
+            sleepThresholdMinutes: 60,
             dayNight: DayNightConfig(mode: .cycle, sunrise: "05:30", sunset: "19:45", cyclePeriodMinutes: 90, dayRatio: 0.7),
             camera: CameraConfig(mode: .continuous, intervalMinutes: 5, continuousPeriodMinutes: 30,
                                  base: CameraBase(azimuthDeg: 135, pitchDeg: 55, zoom: 1.5, target: [2, -3])),
@@ -87,8 +97,8 @@ final class ConfigStoreTests: XCTestCase {
         let (store, url, dir) = try makeStore()
         XCTAssertFalse(FileManager.default.fileExists(atPath: dir.path))
         try store.save(AppConfig(fps: 30))
-        try store.save(AppConfig(fps: 15))
-        XCTAssertEqual(try jsonObject(at: url)["fps"] as? Int, 15)
+        try store.save(AppConfig(fps: 30))
+        XCTAssertEqual(try jsonObject(at: url)["fps"] as? Int, 30)
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path), ["config.json"])  // no temp leftovers
     }
 
@@ -101,6 +111,9 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(c.fps, 30)
         XCTAssertEqual(c.version, 1)
         XCTAssertTrue(c.hideSessionNames)
+        XCTAssertEqual(c.theme, .pastoral)
+        XCTAssertEqual(c.depthOfFieldStrength, 0.6)
+        XCTAssertTrue(c.wallpaperSnapshot)
         XCTAssertEqual(c.finishedWindowMinutes, 30)
         XCTAssertEqual(c.sleepThresholdMinutes, 120)
         XCTAssertEqual(c.projects, [ProjectConfig(path: "/a/foo", name: "foo", color: "#5B8DEF", buildingStyle: "auto")])
@@ -116,6 +129,22 @@ final class ConfigStoreTests: XCTestCase {
         try Data("{}".utf8).write(to: url)
         guard case let .loaded(c) = store.load() else { return XCTFail("expected loaded") }
         XCTAssertEqual(c, AppConfig())
+    }
+
+    func testNewKeysDecode() throws {
+        let data = Data(#"{ "theme": "urban", "depthOfFieldStrength": 0.25, "depthOfFieldRange": 0.1, "wallpaperSnapshot": false }"#.utf8)
+        let c = try JSONDecoder().decode(AppConfig.self, from: data)
+        XCTAssertEqual(c.theme, .urban)
+        XCTAssertEqual(c.depthOfFieldStrength, 0.25)
+        XCTAssertEqual(c.depthOfFieldRange, 0.1)
+        XCTAssertFalse(c.wallpaperSnapshot)
+    }
+
+    func testUnknownThemeCountsAsBroken() throws {
+        let (store, url, dir) = try makeStore()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data(#"{ "theme": "desert" }"#.utf8).write(to: url)
+        guard case .recoveredFromBroken = store.load() else { return XCTFail("expected recoveredFromBroken") }
     }
 
     func testMalformedTargetFallsBackToOrigin() throws {
