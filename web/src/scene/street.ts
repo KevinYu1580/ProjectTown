@@ -354,8 +354,8 @@ export class Street {
     this.waterMat.color.copy(this.waterBase).multiply(this.tint).multiplyScalar(THREE.MathUtils.lerp(0.45, 1, THREE.MathUtils.smoothstep(level, 0, 0.6)))
     const a = lampAmount(level)
     this.bulbMat.emissiveIntensity = THREE.MathUtils.lerp(0.15, 9, a)
-    this.poolMat.opacity = 0.75 * a
-    this.haloMat.opacity = 0.9 * a
+    this.poolMat.opacity = 0.55 * a
+    this.haloMat.opacity = 0.65 * a
     for (const o of this.pools) o.visible = a > 0
   }
 

@@ -15,7 +15,7 @@ const MAX_NEAR_BLUR = 0.005
 const FAR_HALF = 0.15
 const NEAR_HALF = 0.4
 
-const BLOOM = { strength: 0.35, radius: 0.55, threshold: 1.0 }
+const BLOOM = { strength: 0.3, radius: 0.55, threshold: 1.0 }
 
 // Most blur taps on each side of the centre pixel; small blurs take about one per pixel. The lite pipeline (software
 // rasteriser) uses fewer.
