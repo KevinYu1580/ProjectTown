@@ -7,13 +7,17 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import type { TownLayout } from './layout'
 
 // Depth of field by scene depth. The town's depth range, as seen from the camera, stays sharp. Behind it the blur grows
-// with distance and nears MAX_BLUR at the horizon; in front of it (the screen-bottom foreground) it stays gentle.
-// Blur radii are 2 sigma of the Gaussian, as fractions of the screen height (the old screen-y tilt-shift used 0.038).
+// with distance and nears MAX_BLUR at the horizon; in front of it (the screen-bottom foreground) it stays gentle. On top
+// of that, a band along the top and the bottom edge of the screen (its height is a setting) blurs everything but the town
+// itself, more toward the edge. Blur radii are 2 sigma of the Gaussian, as fractions of the screen height (the old
+// screen-y tilt-shift used 0.038).
 const MAX_BLUR = 0.024
 const MAX_NEAR_BLUR = 0.005
 // The blur reaches half its maximum this far past an edge of the sharp zone, as a fraction of that edge's depth.
 const FAR_HALF = 0.15
 const NEAR_HALF = 0.4
+// The edge bands fade in over this many metres outside the town's bounds, so the sharp town has no hard outline.
+const BAND_FADE = 8
 
 const BLOOM = { strength: 0.3, radius: 0.55, threshold: 1.0 }
 
@@ -38,12 +42,25 @@ uniform bool blur;
 uniform vec2 focus; // view depth of the sharp zone's near and far edges
 uniform vec2 maxBlur; // blur limits in pixels: in front of the zone, and far behind it
 uniform vec2 clip; // camera near and far planes
+uniform float band; // height of the blurred band along the top and the bottom edge, as a fraction of the screen height
+uniform vec4 town; // the town's ground bounds: min x, max x, min z, max z
+uniform mat4 projInv;
+uniform mat4 viewInv;
 varying vec2 vUv;
 float coc() {
-  float z = clip.x * clip.y / (clip.y - texture2D(tDepth, vUv).x * (clip.y - clip.x));
+  float d = texture2D(tDepth, vUv).x;
+  float z = clip.x * clip.y / (clip.y - d * (clip.y - clip.x));
   float f = max(z - focus.y, 0.0) / (${FAR_HALF.toFixed(3)} * focus.y);
   float n = max(focus.x - z, 0.0) / (${NEAR_HALF.toFixed(3)} * focus.x);
-  return max(maxBlur.y * f / (1.0 + f), maxBlur.x * n / (1.0 + n));
+  float c = max(maxBlur.y * f / (1.0 + f), maxBlur.x * n / (1.0 + n));
+  if (band <= 0.0) return c;
+  // The pixel's world position: anything standing on the town's ground (buildings, signs, people) stays sharp.
+  vec4 p = projInv * vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0);
+  vec3 w = (viewInv * vec4(p.xyz / p.w, 1.0)).xyz;
+  float outside = max(max(town.x - w.x, w.x - town.y), max(town.z - w.z, w.z - town.w));
+  if (outside <= 0.0) return c;
+  float t = clamp(max(vUv.y - (1.0 - band), band - vUv.y) / band, 0.0, 1.0);
+  return max(c, maxBlur.y * t * t * smoothstep(0.0, ${BAND_FADE.toFixed(1)}, outside));
 }
 void main() {
   gl_FragColor = vec4(texture2D(tDiffuse, vUv).rgb, blur ? coc() : 1.0);
@@ -164,6 +181,10 @@ class ScenePass extends ShaderPass {
           focus: { value: new THREE.Vector2(1, 2) },
           maxBlur: { value: new THREE.Vector2() },
           clip: { value: new THREE.Vector2(1, 2) },
+          band: { value: 0 },
+          town: { value: new THREE.Vector4() },
+          projInv: { value: new THREE.Matrix4() },
+          viewInv: { value: new THREE.Matrix4() },
         },
         vertexShader: VERT,
         fragmentShader: RESOLVE_FRAG,
@@ -177,16 +198,24 @@ class ScenePass extends ShaderPass {
     this.uniforms.blur.value = on
   }
 
+  /** Height of the blurred band along the top and the bottom edge, as a fraction of the screen height (0: none). */
+  set band(fraction: number) {
+    this.uniforms.band.value = fraction
+  }
+
   /** Multiplies both blur limits (the settings' depth-of-field strength). */
   set strength(k: number) {
     this.k = k
     this.updateMaxBlur()
   }
 
-  /** View depth of the sharp zone's near and far edges. */
-  setFocus(near: number, far: number): void {
+  /** View depth of the sharp zone's near and far edges, and the town's ground bounds that the edge bands spare. */
+  setFocus(near: number, far: number, town: TownLayout['bounds']): void {
     this.uniforms.focus.value.set(near, far)
     this.uniforms.clip.value.set(this.camera.near, this.camera.far)
+    this.uniforms.town.value.set(town.minX, town.maxX, town.minZ, town.maxZ)
+    this.uniforms.projInv.value.copy(this.camera.projectionMatrixInverse)
+    this.uniforms.viewInv.value.copy(this.camera.matrixWorld)
   }
 
   override setSize(width: number, height: number): void {
@@ -245,11 +274,15 @@ export class PostFX {
     for (const p of this.passes) this.composer.addPass(p)
   }
 
-  /** Off removes both blur passes from the pipeline; `strength` multiplies the blur (1: the default look). */
-  setDepthOfField(on: boolean, strength = 1): void {
+  /**
+   * Off removes both blur passes from the pipeline; `strength` multiplies the blur (1: the default look) and `band` is
+   * the height of the blurred band along the top and the bottom edge, as a fraction of the screen height.
+   */
+  setDepthOfField(on: boolean, strength = 1, band = 0): void {
     for (const p of this.dof) p.enabled = on
     this.scenePass.blur = on
     this.scenePass.strength = strength
+    this.scenePass.band = band
   }
 
   /** The town's ground bounds and the height of its tallest building with its sign: all of it stays sharp. */
@@ -270,7 +303,7 @@ export class PostFX {
       this.camera.getWorldDirection(this.dir)
       townDepthRange(this.eye, this.dir, this.town, this.townHeight, this.range)
       const near = Math.max(this.range.x, this.camera.near)
-      this.scenePass.setFocus(near, Math.max(this.range.y, near))
+      this.scenePass.setFocus(near, Math.max(this.range.y, near), this.town)
     }
     this.composer.render()
   }

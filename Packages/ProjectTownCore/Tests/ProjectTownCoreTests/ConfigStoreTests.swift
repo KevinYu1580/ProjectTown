@@ -23,6 +23,7 @@ final class ConfigStoreTests: XCTestCase {
         XCTAssertEqual(c.theme, .pastoral)
         XCTAssertTrue(c.depthOfField)
         XCTAssertEqual(c.depthOfFieldStrength, 1)
+        XCTAssertEqual(c.depthOfFieldRange, 0.25)
         XCTAssertTrue(c.wallpaperSnapshot)
         XCTAssertEqual(c.finishedWindowMinutes, 30)
         XCTAssertEqual(c.sleepThresholdMinutes, 120)
@@ -53,11 +54,12 @@ final class ConfigStoreTests: XCTestCase {
         let json = try jsonObject(at: url)
         XCTAssertEqual(Set(json.keys), [
             "version", "projects", "fps", "hudVisible", "hideSessionNames", "theme", "depthOfField",
-            "depthOfFieldStrength", "wallpaperSnapshot", "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight",
+            "depthOfFieldStrength", "depthOfFieldRange", "wallpaperSnapshot", "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight",
             "camera", "displayUUID",
         ])
         XCTAssertEqual(json["theme"] as? String, "pastoral")
         XCTAssertEqual(json["depthOfFieldStrength"] as? Double, 1)
+        XCTAssertEqual(json["depthOfFieldRange"] as? Double, 0.25)
         XCTAssertEqual(json["wallpaperSnapshot"] as? Bool, true)
         let dayNight = try XCTUnwrap(json["dayNight"] as? [String: Any])
         XCTAssertEqual(Set(dayNight.keys), ["mode", "sunrise", "sunset", "cyclePeriodMinutes", "dayRatio"])
@@ -78,7 +80,8 @@ final class ConfigStoreTests: XCTestCase {
                 ProjectConfig(path: "/a/bar baz", name: "Bar", color: "#445566", buildingStyle: "auto"),
             ],
             fps: 120, hudVisible: false, hideSessionNames: false, theme: .urban, depthOfField: false,
-            depthOfFieldStrength: 1.65, wallpaperSnapshot: false, finishedWindowMinutes: 15, sleepThresholdMinutes: 60,
+            depthOfFieldStrength: 1.65, depthOfFieldRange: 0.4, wallpaperSnapshot: false, finishedWindowMinutes: 15,
+            sleepThresholdMinutes: 60,
             dayNight: DayNightConfig(mode: .cycle, sunrise: "05:30", sunset: "19:45", cyclePeriodMinutes: 90, dayRatio: 0.7),
             camera: CameraConfig(mode: .continuous, intervalMinutes: 5, continuousPeriodMinutes: 30,
                                  base: CameraBase(azimuthDeg: 135, pitchDeg: 55, zoom: 1.5, target: [2, -3])),
@@ -129,10 +132,11 @@ final class ConfigStoreTests: XCTestCase {
     }
 
     func testNewKeysDecode() throws {
-        let data = Data(#"{ "theme": "urban", "depthOfFieldStrength": 0.25, "wallpaperSnapshot": false }"#.utf8)
+        let data = Data(#"{ "theme": "urban", "depthOfFieldStrength": 0.25, "depthOfFieldRange": 0.1, "wallpaperSnapshot": false }"#.utf8)
         let c = try JSONDecoder().decode(AppConfig.self, from: data)
         XCTAssertEqual(c.theme, .urban)
         XCTAssertEqual(c.depthOfFieldStrength, 0.25)
+        XCTAssertEqual(c.depthOfFieldRange, 0.1)
         XCTAssertFalse(c.wallpaperSnapshot)
     }
 

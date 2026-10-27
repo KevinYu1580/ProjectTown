@@ -12,6 +12,7 @@ public enum ConfigLimits {
     public static let pitchDeg = 20.0...70.0
     public static let zoom = 0.5...3.0
     public static let depthOfFieldStrength = 0.25...2.0
+    public static let depthOfFieldRange = 0.0...0.45
 }
 
 /// One reason a config is invalid; carries the offending value.
@@ -32,6 +33,7 @@ public enum ConfigIssue: Sendable, Equatable {
     case cameraPitchDeg(Double)
     case cameraZoom(Double)
     case depthOfFieldStrength(Double)
+    case depthOfFieldRange(Double)
 }
 
 extension AppConfig {
@@ -75,12 +77,13 @@ extension AppConfig {
         if !ConfigLimits.depthOfFieldStrength.contains(depthOfFieldStrength) {
             issues.append(.depthOfFieldStrength(depthOfFieldStrength))
         }
+        if !ConfigLimits.depthOfFieldRange.contains(depthOfFieldRange) { issues.append(.depthOfFieldRange(depthOfFieldRange)) }
 
         return issues
     }
 
     /// Copy with each setting group that has an issue reset to its default; valid groups are kept.
-    /// Groups: fps; finished/sleep pair; day/night; camera interval; camera period; camera view; blur strength.
+    /// Groups: fps; finished/sleep pair; day/night; camera interval; camera period; camera view; blur strength; blur range.
     public func repaired() -> AppConfig {
         var fixed = self
         let defaults = AppConfig()
@@ -101,6 +104,8 @@ extension AppConfig {
                 fixed.camera.base = defaults.camera.base
             case .depthOfFieldStrength:
                 fixed.depthOfFieldStrength = defaults.depthOfFieldStrength
+            case .depthOfFieldRange:
+                fixed.depthOfFieldRange = defaults.depthOfFieldRange
             }
         }
         return fixed

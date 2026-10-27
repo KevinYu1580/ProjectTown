@@ -134,6 +134,8 @@ extension ConfigIssue {
             String(localized: "The camera angle or zoom is out of range.")
         case .depthOfFieldStrength:
             String(localized: "The blur strength must be between 25% and 200%.")
+        case .depthOfFieldRange:
+            String(localized: "The blur range must be between 0% and 45%.")
         }
     }
 }

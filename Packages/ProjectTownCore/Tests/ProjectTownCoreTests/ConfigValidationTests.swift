@@ -133,11 +133,21 @@ final class ConfigValidationTests: XCTestCase {
         XCTAssertEqual(issues { $0.depthOfFieldStrength = .nan }.count, 1)
     }
 
+    func testDepthOfFieldRangeBoundaries() {
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0.45 }, [])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = -0.01 }, [.depthOfFieldRange(-0.01)])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = 0.46 }, [.depthOfFieldRange(0.46)])
+        XCTAssertEqual(issues { $0.depthOfFieldRange = .nan }.count, 1)
+    }
+
     func testRepairedResetsOnlyBlurStrength() {
-        let config = AppConfig(fps: 30, theme: .urban, depthOfField: false, depthOfFieldStrength: 5, wallpaperSnapshot: false)
+        let config = AppConfig(fps: 30, theme: .urban, depthOfField: false, depthOfFieldStrength: 5, depthOfFieldRange: 0.9,
+                               wallpaperSnapshot: false)
         let repaired = config.repaired()
         XCTAssertEqual(repaired.validate(), [])
         XCTAssertEqual(repaired.depthOfFieldStrength, 1)
+        XCTAssertEqual(repaired.depthOfFieldRange, 0.25)
         XCTAssertEqual(repaired.theme, .urban)
         XCTAssertFalse(repaired.depthOfField)
         XCTAssertFalse(repaired.wallpaperSnapshot)

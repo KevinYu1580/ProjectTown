@@ -137,6 +137,8 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public var depthOfField: Bool
     /// Multiplies the depth-of-field blur; 1 is the default look.
     public var depthOfFieldStrength: Double
+    /// Height of the blurred band along the top and the bottom edge of the screen, as a fraction of its height.
+    public var depthOfFieldRange: Double
     /// Swift only: keep the system wallpaper of the town's display set to a snapshot of the town.
     public var wallpaperSnapshot: Bool
     public var finishedWindowMinutes: Int
@@ -147,7 +149,8 @@ public struct AppConfig: Codable, Sendable, Equatable {
 
     public init(version: Int = 1, projects: [ProjectConfig] = [], fps: Int = 60, hudVisible: Bool = true,
                 hideSessionNames: Bool = true, theme: SceneTheme = .pastoral, depthOfField: Bool = true,
-                depthOfFieldStrength: Double = 1, wallpaperSnapshot: Bool = true, finishedWindowMinutes: Int = 30,
+                depthOfFieldStrength: Double = 1, depthOfFieldRange: Double = 0.25, wallpaperSnapshot: Bool = true,
+                finishedWindowMinutes: Int = 30,
                 sleepThresholdMinutes: Int = 120, dayNight: DayNightConfig = DayNightConfig(),
                 camera: CameraConfig = CameraConfig(), displayUUID: String? = nil) {
         self.version = version
@@ -158,6 +161,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
         self.theme = theme
         self.depthOfField = depthOfField
         self.depthOfFieldStrength = depthOfFieldStrength
+        self.depthOfFieldRange = depthOfFieldRange
         self.wallpaperSnapshot = wallpaperSnapshot
         self.finishedWindowMinutes = finishedWindowMinutes
         self.sleepThresholdMinutes = sleepThresholdMinutes
@@ -167,7 +171,8 @@ public struct AppConfig: Codable, Sendable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case version, projects, fps, hudVisible, hideSessionNames, theme, depthOfField, depthOfFieldStrength, wallpaperSnapshot
+        case version, projects, fps, hudVisible, hideSessionNames, theme, depthOfField, depthOfFieldStrength, depthOfFieldRange
+        case wallpaperSnapshot
         case finishedWindowMinutes, sleepThresholdMinutes, dayNight, camera, displayUUID
     }
 
@@ -183,6 +188,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
             theme: try c.value(.theme, default: d.theme),
             depthOfField: try c.value(.depthOfField, default: d.depthOfField),
             depthOfFieldStrength: try c.value(.depthOfFieldStrength, default: d.depthOfFieldStrength),
+            depthOfFieldRange: try c.value(.depthOfFieldRange, default: d.depthOfFieldRange),
             wallpaperSnapshot: try c.value(.wallpaperSnapshot, default: d.wallpaperSnapshot),
             finishedWindowMinutes: try c.value(.finishedWindowMinutes, default: d.finishedWindowMinutes),
             sleepThresholdMinutes: try c.value(.sleepThresholdMinutes, default: d.sleepThresholdMinutes),
@@ -202,6 +208,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
         try c.encode(theme, forKey: .theme)
         try c.encode(depthOfField, forKey: .depthOfField)
         try c.encode(depthOfFieldStrength, forKey: .depthOfFieldStrength)
+        try c.encode(depthOfFieldRange, forKey: .depthOfFieldRange)
         try c.encode(wallpaperSnapshot, forKey: .wallpaperSnapshot)
         try c.encode(finishedWindowMinutes, forKey: .finishedWindowMinutes)
         try c.encode(sleepThresholdMinutes, forKey: .sleepThresholdMinutes)

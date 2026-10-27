@@ -152,7 +152,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     const themeChanged = s.theme !== this.settings.theme
     this.settings = s
     this.loop.setFps(s.fps)
-    this.postfx.setDepthOfField(s.depthOfField, s.depthOfFieldStrength)
+    this.postfx.setDepthOfField(s.depthOfField, s.depthOfFieldStrength, s.depthOfFieldRange)
     if (themeChanged) {
       this.outskirts.dispose()
       this.outskirts = createSurroundings(s.theme, this.scene)

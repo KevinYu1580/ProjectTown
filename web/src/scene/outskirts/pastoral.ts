@@ -11,7 +11,7 @@ import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
 import type { TownLayout } from '../layout'
 import { PAL } from '../palette'
-import { PLATE_H, makeWaterMaterial, type TownEdge } from '../street'
+import { GROUND_REACH, PLATE_H, makeWaterMaterial, type TownEdge } from '../street'
 import { makeVoxelMaterial } from '../voxel'
 import {
   BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, hillTierRadius, planOutskirts, riverX, tractorPose, trainPose,
@@ -249,6 +249,7 @@ export class Outskirts {
     solid.box(px, GROUND - 0.4, pz, pw, 0.4, pd, base(PAL.grass[0], 1.08))
     solid.box(px, GROUND - 1.9, pz, pw, 1.5, pd, base(PAL.soil[1]), null)
     solid.box(px, -PLATE_H, pz, pw, PLATE_H + GROUND - 1.9, pd, base(PAL.rim), null)
+    solid.flat(-GROUND_REACH, -GROUND_REACH, GROUND_REACH, GROUND_REACH, GROUND - 0.01, base(PAL.grass[0], 1.08))
     const tx = (terrace.x0 + terrace.x1) / 2
     const tz = (terrace.z0 + terrace.z1) / 2
     const tw = terrace.x1 - terrace.x0
@@ -326,7 +327,7 @@ export class Outskirts {
     this.root.add(content)
     this.poseMoving()
     this.setLightLevel(this.level)
-    return { plate: plan.plate, exits: plan.exits, glows: plan.glows }
+    return { exits: plan.exits, glows: plan.glows }
   }
 
   setLightLevel(level: number): void {

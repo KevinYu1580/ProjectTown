@@ -10,7 +10,7 @@ import { createRng } from '../../util/prng'
 import { flower, voxelBush, voxelTree } from '../flora'
 import { SIDEWALK_WIDTH, type TownLayout } from '../layout'
 import { PAL } from '../palette'
-import { ASPHALT_W, GRASS_TOP, KERB_W, PLATE_H, type TownEdge } from '../street'
+import { ASPHALT_W, GRASS_TOP, GROUND_REACH, KERB_W, PLATE_H, type TownEdge } from '../street'
 import { VoxelBuilder, makeVoxelMaterial, material } from '../voxel'
 import {
   ASPHALT_HALF, LANE_EDGE, LANE_HALF, LANE_W, MAIN_HALF, STOREY, carPose, inHood, planOutskirts, roofTier, type CarPose, type Facing,
@@ -271,7 +271,7 @@ export class Outskirts {
     this.root.add(content)
     this.poseCars()
     this.setLightLevel(this.level)
-    return { plate: plan.plate, exits: plan.exits, glows: [], surround: (outer, props, water) => surround(outer, props, water, plan) }
+    return { exits: plan.exits, glows: [], surround: (outer, props, water) => surround(outer, props, water, plan) }
   }
 
   setLightLevel(level: number): void {
@@ -998,6 +998,7 @@ function surround(outer: VoxelBuilder, outerProps: VoxelBuilder, water: THREE.Bu
   outer.box(midX, GRASS_TOP - 0.4, midZ, plateW, 0.4, plateD, material(PAL.grass[1]))
   outer.box(midX, GRASS_TOP - 1.9, midZ, plateW, 1.5, plateD, material(PAL.soil[1]))
   outer.box(midX, -PLATE_H, midZ, plateW, PLATE_H + GRASS_TOP - 1.9, plateD, material(PAL.rim))
+  outer.box(0, GRASS_TOP - 0.02, 0, 2 * GROUND_REACH, 0.01, 2 * GROUND_REACH, material(PAL.grass[1]))
   const rng = createRng(fnv1a32(`surround:${plateW.toFixed(1)},${plateD.toFixed(1)}`))
   const between = (lo: number, hi: number): number => lo + (hi - lo) * rng()
   // The neighbourhood (town included) ends at its outermost lane; countryside stays clear of that lane too.

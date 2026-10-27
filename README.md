@@ -42,7 +42,7 @@ When a session ends, its person walks out to the road and off the map.
 
 - **Fixed** (default), **Interval** (turns 90° every few minutes), or **Continuous** (a slow orbit, one turn per hour by default).
 - **Adjust View** (menu bar or Settings): rotate, zoom and pan the town right on your desktop, then save.
-- Depth-of-field blur for the miniature look, with an adjustable strength from 25% to 200% (can be turned off).
+- Depth-of-field blur for the miniature look: the scenery behind the town blurs more the farther away it is, and a band along the top and the bottom of the screen blurs too, with adjustable strength (25–200%) and range (0–45% of the screen height). The town itself always stays sharp. It can be turned off.
 - **Show the town while switching desktops** (on by default): macOS sometimes shows the system wallpaper for a moment while you switch desktops or open Mission Control. With this option ProjectTown sets the system wallpaper to a recent snapshot of the town, so you see the town instead. Turning it off puts your own wallpaper back.
 
 **Light on resources**

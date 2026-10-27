@@ -1,6 +1,6 @@
 // The town's ground: asphalt roads with kerbs, sidewalks, zebra crossings, the garden verge, lamps (emissive bulb +
-// additive ground pool + glow), pocket parks and voxel plants, plus the table under the diorama and the plate's soft
-// shadow on it. The surroundings (outskirts/, one per theme) build the rest and say where the town's roads leave it.
+// additive ground pool + glow), pocket parks and voxel plants. The surroundings (outskirts/, one per theme) build the
+// rest and say where the town's roads leave it.
 // Static geometry is merged into a few vertex-coloured meshes; plants sway through the shared wind uniform, water
 // ripples on the same clock.
 import * as THREE from 'three'
@@ -26,6 +26,8 @@ type Pt = { x: number; z: number }
 
 /** Depth of the diorama's base plate below the town (the plate itself is built with the surroundings). */
 export const PLATE_H = 3
+/** The plain grass that runs on past the plate on every side, so the view never shows an edge (fog hides its end). */
+export const GROUND_REACH = 4000
 /** Top of the grass around the town (both themes); the verge sits just above it and below the asphalt top (y = 0). */
 export const GRASS_TOP = -0.05
 const VERGE_H = 0.036
@@ -46,9 +48,8 @@ export interface RoadExit {
   tinted: boolean
 }
 
-/** What the surroundings tell the street: the plate (for its shadow on the table) and the roads that leave town. */
+/** What the surroundings tell the street: the roads that leave town. */
 export interface TownEdge {
-  plate: { x0: number; x1: number; z0: number; z1: number }
   exits: RoadExit[]
   /** Draws more of the surroundings into the street's night-tinted surround builders and water. */
   surround?: (outer: VoxelBuilder, outerProps: VoxelBuilder, water: THREE.BufferGeometry[]) => void
@@ -83,12 +84,6 @@ export function makeWaterMaterial(): THREE.MeshStandardMaterial {
 
 export class Street {
   private readonly group = new THREE.Group()
-  private readonly table: THREE.Mesh
-  private readonly tableMat = new THREE.MeshBasicMaterial({ color: 0xffffff })
-  private readonly shadowTex = makeContactShadow()
-  private readonly shadowMat = new THREE.MeshBasicMaterial({
-    map: this.shadowTex, color: 0x141c30, transparent: true, opacity: 0.5, depthWrite: false, fog: false,
-  })
   // The verge, its plants and anything the surroundings add here share one vertex-colour material tinted at night.
   private readonly outerMat = makeVoxelMaterial(0.92)
   private readonly waterMat = makeWaterMaterial()
@@ -110,11 +105,6 @@ export class Street {
   private level = 1
 
   constructor(private readonly parent: THREE.Object3D) {
-    // The "table" under the model: same tone as the sky so the far ground melts into the background.
-    this.table = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), this.tableMat)
-    this.table.rotation.x = -Math.PI / 2
-    this.table.position.y = -PLATE_H - 0.05
-    this.group.add(this.table)
     parent.add(this.group)
   }
 
@@ -302,12 +292,6 @@ export class Street {
 
     const ground = flats.build({ receiveShadow: true })
     content.add(ground, props.build({ castShadow: true, receiveShadow: true }))
-    // Soft shadow of the plate on the table.
-    const plate = outside.plate
-    const shadow = new THREE.Mesh(new THREE.PlaneGeometry((plate.x1 - plate.x0) * 1.12, (plate.z1 - plate.z0) * 1.12).rotateX(-Math.PI / 2), this.shadowMat)
-    shadow.position.set((plate.x0 + plate.x1) / 2, -PLATE_H - 0.02, (plate.z0 + plate.z1) / 2)
-    shadow.renderOrder = 1
-    content.add(shadow)
     outside.surround?.(outer, outerProps, water)
     content.add(outer.build({ receiveShadow: true }), outerProps.build({ castShadow: true, receiveShadow: true }))
     if (water.length > 0) {
@@ -345,9 +329,6 @@ export class Street {
 
   setLightLevel(level: number): void {
     this.level = level
-    const bg = this.parent instanceof THREE.Scene ? this.parent.background : null
-    if (bg instanceof THREE.Color) this.tableMat.color.copy(bg).multiplyScalar(0.88)
-    this.shadowMat.opacity = THREE.MathUtils.lerp(0.55, 0.4, level)
     this.tint.copy(NIGHT_TINT).lerp(WHITE, THREE.MathUtils.smoothstep(level, 0, 0.6)) // full brightness through dusk and dawn
     this.outerMat.color.copy(this.tint)
     // Water darkens more than the land at night so it never glows.
@@ -361,10 +342,8 @@ export class Street {
 
   dispose(): void {
     this.parent.remove(this.group)
-    this.table.geometry.dispose()
     this.clearContent()
-    for (const m of [this.tableMat, this.shadowMat, this.outerMat, this.waterMat]) m.dispose()
-    this.shadowTex.dispose()
+    for (const m of [this.outerMat, this.waterMat]) m.dispose()
     this.bulbMat.dispose()
     this.poolMat.dispose()
     this.haloMat.dispose()
@@ -425,20 +404,6 @@ function makeGlowTexture(stops: Array<[number, number]>): THREE.CanvasTexture {
   for (const [at, alpha] of stops) g.addColorStop(at, `rgba(255,255,255,${alpha})`)
   ctx.fillStyle = g
   ctx.fillRect(0, 0, 128, 128)
-  const tex = new THREE.CanvasTexture(c)
-  tex.colorSpace = THREE.SRGBColorSpace
-  return tex
-}
-
-/** Soft dark rectangle (alpha only matters); stretched over the plate it fakes a contact shadow on the table. */
-function makeContactShadow(): THREE.CanvasTexture {
-  const c = document.createElement('canvas')
-  c.width = c.height = 256
-  const ctx = c.getContext('2d')!
-  ctx.shadowColor = '#000'
-  ctx.shadowBlur = 12
-  ctx.shadowOffsetX = 512 // draw the rect off-canvas so only its blurred shadow lands inside
-  ctx.fillRect(14 - 512, 14, 228, 228)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
   return tex

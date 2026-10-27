@@ -193,6 +193,22 @@
         }
       }
     },
+    "Blur range" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blur range"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊範圍"
+          }
+        }
+      }
+    },
     "Blur strength" : {
       "localizations" : {
         "en" : {
@@ -1197,6 +1213,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "日落時間必須晚於日出時間。"
+          }
+        }
+      }
+    },
+    "The blur range must be between 0% and 45%." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The blur range must be between 0% and 45%."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "模糊範圍必須介於 0% 到 45% 之間。"
           }
         }
       }

@@ -57,6 +57,7 @@ export interface SceneSettings {
   theme: SceneTheme
   depthOfField: boolean
   depthOfFieldStrength: number // multiplies the blur: 1 is the default look
+  depthOfFieldRange: number // blurred band along the top and the bottom edge, as a fraction of the screen height
   dayNight: DayNightSettings
   camera: CameraSettings
 }
@@ -89,6 +90,7 @@ export const DEFAULT_SCENE_SETTINGS: SceneSettings = {
   theme: 'pastoral',
   depthOfField: true,
   depthOfFieldStrength: 1,
+  depthOfFieldRange: 0.25,
   dayNight: { mode: 'realtime', sunrise: '06:00', sunset: '18:00' },
   camera: {
     mode: 'fixed',
