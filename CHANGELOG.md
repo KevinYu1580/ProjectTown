@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Background neighbourhood around the town: muted houses on garden plots along residential lanes, trees, a pond park and small cars driving the lanes, filling the default view at every orbit angle and giving way to countryside at the plate edge, with sparse warm windows and car lamps at night.
+
 ## [0.4.0] - 2026-10-27
 
 ### Added

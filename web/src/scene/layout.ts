@@ -5,6 +5,8 @@ export const BASE_LOT_SIZE = 14
 // Full gap between two neighbouring lots, sidewalks included (asphalt = ROAD_WIDTH - 2 * SIDEWALK_WIDTH).
 export const ROAD_WIDTH = 6
 export const SIDEWALK_WIDTH = 1.5
+/** Garden verge around the town, outside its outer road ring. */
+export const VERGE_W = 6
 
 // Crosswalk centre sits this far from the intersection centre, along the road (just outside the intersection).
 const CROSSWALK_OFFSET = ROAD_WIDTH / 2 + SIDEWALK_WIDTH
