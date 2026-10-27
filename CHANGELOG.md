@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-27
+
 ### Added
 
 - A **Theme** setting: Countryside (the default) or City. City puts the town back in a neighbourhood, now far more varied: detached houses of many sizes and roof shapes, row houses, small apartment blocks, corner shops, workshops, a school with a sports field, a church, parks, playgrounds, plazas and parking lots, with the taller buildings kept away from the town so it stays the focus.
