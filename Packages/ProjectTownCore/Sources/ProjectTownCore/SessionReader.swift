@@ -67,6 +67,9 @@ public struct SessionReader: Sendable {
             do {
                 let file = try decoder.decode(SessionFile.self, from: Data(contentsOf: url))
                 if file.kind == nil || file.kind == "interactive" { sessions.append(file) }
+            } catch CocoaError.fileReadNoSuchFile {
+                // The session ended between listing the directory and reading its file.
+                continue
             } catch {
                 Self.log.error("Skipping \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }

@@ -86,6 +86,17 @@ final class SessionReaderTests: XCTestCase {
         XCTAssertTrue(result.sessions.isEmpty)
     }
 
+    // A session that ends between the directory listing and the read leaves a name with no file behind it.
+    func testFileThatVanishedIsSkipped() throws {
+        let dir = try makeTempDirectory()
+        try writeSessionJSON(to: dir, pid: 1, sessionId: "alive", cwd: "/p", status: "idle")
+        try FileManager.default.createSymbolicLink(
+            at: dir.appendingPathComponent("2.json"), withDestinationURL: dir.appendingPathComponent("gone.json"))
+        let result = SessionReader(directory: dir).read()
+        XCTAssertTrue(result.directoryReadable)
+        XCTAssertEqual(result.sessions.map(\.sessionId), ["alive"])
+    }
+
     func testEmptyDirectoryIsReadable() throws {
         let result = SessionReader(directory: try makeTempDirectory()).read()
         XCTAssertTrue(result.directoryReadable)
