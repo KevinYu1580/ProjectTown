@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - The houses around the town are replaced by open countryside: the town now stands on a low walled terrace with an avenue of trees and gated roads, surrounded by patchwork fields, a winding river with a stone bridge and a rail bridge, a small train that passes through tunnels now and then, windmills, three farms, orchards, a pond, grazing sheep and cows, tractors by day and a ring of hills toward the edge. At night the countryside goes dark and quiet with only a few warm farm windows, gate lanterns, the passing train and fireflies over the water.
+- Depth of field blurs by distance instead of by screen position: the town, its signs and its people stay sharp wherever they are on screen, the scenery beyond it blurs more the farther away it is, things in front of the town blur only slightly, and the strongest blur is about a third weaker.
 
 ## [1.0.0] - 2026-10-27
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { SessionState } from '../types'
+import { DRAWN_ON_TOP } from './postfx'
 
 export interface SignContent {
   name: string
@@ -104,7 +105,7 @@ export class Sign {
     this.texture = new THREE.CanvasTexture(this.canvas)
     this.texture.colorSpace = THREE.SRGBColorSpace
     this.texture.anisotropy = 4
-    this.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.texture, fog: false, transparent: true, depthTest: false, sizeAttenuation: false }))
+    this.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.texture, fog: false, transparent: true, sizeAttenuation: false, ...DRAWN_ON_TOP }))
     this.sprite.center.set(0.5, 0)
     this.sprite.frustumCulled = false // the world scale below is not the on-screen size
     this.sprite.onBeforeRender = (renderer, _scene, camera) => this.fitToScreen(renderer, camera)
