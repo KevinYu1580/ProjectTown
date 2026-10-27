@@ -6,7 +6,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import { fnv1a32 } from '../util/hash'
 import { createRng } from '../util/prng'
 import { flower, flowerBed, hedge, voxelBush, voxelTree } from './flora'
-import { ROAD_WIDTH, SIDEWALK_WIDTH, type TownLayout } from './layout'
+import { ROAD_WIDTH, SIDEWALK_WIDTH, VERGE_W, type TownLayout } from './layout'
+import { LANE_HALF, LANE_W, inHood, type OutskirtsPlan } from './outskirtsPlan'
 import { PAL } from './palette'
 import { VoxelBuilder, WIND, disposeGeometries, makeVoxelMaterial, material } from './voxel'
 
@@ -22,10 +23,8 @@ const LAMP_FADE = 0.1 // level band below 0.5 over which lamps fade in
 
 type Pt = { x: number; z: number }
 
-// Surrounding model base plate: thickness, margin beyond the town (fraction of its size + a minimum), layer heights.
+// Surrounding model base plate (its extent comes from the outskirts plan): thickness and layer heights.
 const PLATE_H = 3
-const PLATE_MARGIN = { frac: 0.7, min: 34 }
-const VERGE_W = 6 // garden verge between the town's outer sidewalk and the fields
 const GRASS_TOP = -0.05
 // Thin ground layers sit on the grass at distinct heights (no z-fighting) and stay below the asphalt top (y = 0).
 const MEADOW_H = [0.008, 0.016, 0.024]
@@ -101,7 +100,7 @@ export class Street {
     parent.add(this.group)
   }
 
-  build(layout: TownLayout): void {
+  build(layout: TownLayout, plan: OutskirtsPlan): void {
     this.clearContent()
     const content = new THREE.Group()
     const flats = new VoxelBuilder() // town ground: receives shadows only
@@ -150,14 +149,15 @@ export class Street {
     const sizeX = bounds.maxX - bounds.minX
     const sizeZ = bounds.maxZ - bounds.minZ
 
-    // Plate under the whole scene; every road line continues across it to the edge.
-    const margin = Math.max(PLATE_MARGIN.min, PLATE_MARGIN.frac * Math.max(sizeX, sizeZ))
-    const plate = { x0: bounds.minX - margin, x1: bounds.maxX + margin, z0: bounds.minZ - margin, z1: bounds.maxZ + margin }
+    // Plate under the whole scene (sized by the outskirts plan); every road line continues across it to the edge.
+    const plate = plan.plate
     const plateW = plate.x1 - plate.x0
     const plateD = plate.z1 - plate.z0
-    outer.box(midX, GRASS_TOP - 0.4, midZ, plateW, 0.4, plateD, material(PAL.grass[1]))
-    outer.box(midX, GRASS_TOP - 1.9, midZ, plateW, 1.5, plateD, material(PAL.soil[1]))
-    outer.box(midX, -PLATE_H, midZ, plateW, PLATE_H + GRASS_TOP - 1.9, plateD, material(PAL.rim))
+    const plateX = (plate.x0 + plate.x1) / 2
+    const plateZ = (plate.z0 + plate.z1) / 2
+    outer.box(plateX, GRASS_TOP - 0.4, plateZ, plateW, 0.4, plateD, material(PAL.grass[1]))
+    outer.box(plateX, GRASS_TOP - 1.9, plateZ, plateW, 1.5, plateD, material(PAL.soil[1]))
+    outer.box(plateX, -PLATE_H, plateZ, plateW, PLATE_H + GRASS_TOP - 1.9, plateD, material(PAL.rim))
     // Garden verge around the town: a slightly richer lawn than the fields.
     for (const [x0, x1, z0, z1] of [
       [bounds.minX - VERGE_W, bounds.maxX + VERGE_W, bounds.minZ - VERGE_W, bounds.minZ],
@@ -170,36 +170,47 @@ export class Street {
     const zRoads = layout.roads.filter((r) => r.z0 === r.z1).map((r) => r.z0).sort((a, c) => a - c)
     const walkOff = reach + KERB_W + SIDEWALK_WIDTH / 2
     const kerbOff = reach + KERB_W / 2
-    for (const x of xRoads) {
-      for (const [from, to] of [[plate.z0, bounds.minZ], [bounds.maxZ, plate.z1]]) {
-        flats.box(x, -0.3, (from + to) / 2, ASPHALT_W, 0.3, to - from, asphalt)
-        for (const s of [-1, 1]) {
-          flats.box(x + s * walkOff, 0, (from + to) / 2, SIDEWALK_WIDTH, SIDEWALK_H, to - from, walk)
-          flats.box(x + s * kerbOff, 0, (from + to) / 2, KERB_W, KERB_H, to - from, kerb)
-        }
-      }
-    }
-    for (const z of zRoads) {
-      for (const [from, to] of [[plate.x0, bounds.minX], [bounds.maxX, plate.x1]]) {
-        flats.box((from + to) / 2, -0.3, z, to - from, 0.3, ASPHALT_W, asphalt)
-        for (const s of [-1, 1]) {
-          flats.box((from + to) / 2, 0, z + s * walkOff, to - from, SIDEWALK_H, SIDEWALK_WIDTH, walk)
-          flats.box((from + to) / 2, 0, z + s * kerbOff, to - from, KERB_H, KERB_W, kerb)
-        }
-      }
-    }
-
-    // Outer sidewalk ring (kerb on its inner, road side), left open where the road lines run out of town.
+    // Pieces of [a, c] left between gaps of +-gap around the sorted positions `gaps` (gaps outside [a, c] are ignored).
     const spans = (a: number, c: number, gaps: number[], gap: number): Array<[number, number]> => {
       const out: Array<[number, number]> = []
       let from = a
       for (const g of gaps) {
+        if (g + gap <= a || g - gap >= c) continue
         if (g - gap > from) out.push([from, g - gap])
         from = Math.max(from, g + gap)
       }
       if (c > from) out.push([from, c])
       return out
     }
+    // Outside the town the road lines run on through the neighbourhood (outskirts plan) and the countryside to the
+    // plate edge. They share the surround's night tint, so the lit town stays the focus after dark; sidewalks and
+    // kerbs open where a lane crosses.
+    const laneXs = plan.lanes.filter((l) => l.axis === 'z').map((l) => l.at).sort((a, c) => a - c)
+    const laneZs = plan.lanes.filter((l) => l.axis === 'x').map((l) => l.at).sort((a, c) => a - c)
+    for (const x of xRoads) {
+      for (const [from, to] of [[plate.z0, bounds.minZ], [bounds.maxZ, plate.z1]]) {
+        outer.box(x, -0.3, (from + to) / 2, ASPHALT_W, 0.3, to - from, asphalt)
+        for (const [a, c] of spans(from, to, laneZs, LANE_W / 2)) {
+          for (const s of [-1, 1]) {
+            outer.box(x + s * walkOff, 0, (a + c) / 2, SIDEWALK_WIDTH, SIDEWALK_H, c - a, walk)
+            outer.box(x + s * kerbOff, 0, (a + c) / 2, KERB_W, KERB_H, c - a, kerb)
+          }
+        }
+      }
+    }
+    for (const z of zRoads) {
+      for (const [from, to] of [[plate.x0, bounds.minX], [bounds.maxX, plate.x1]]) {
+        outer.box((from + to) / 2, -0.3, z, to - from, 0.3, ASPHALT_W, asphalt)
+        for (const [a, c] of spans(from, to, laneXs, LANE_W / 2)) {
+          for (const s of [-1, 1]) {
+            outer.box((a + c) / 2, 0, z + s * walkOff, c - a, SIDEWALK_H, SIDEWALK_WIDTH, walk)
+            outer.box((a + c) / 2, 0, z + s * kerbOff, c - a, KERB_H, KERB_W, kerb)
+          }
+        }
+      }
+    }
+
+    // Outer sidewalk ring (kerb on its inner, road side), left open where the road lines run out of town.
     const verge = (x0: number, z0: number, x1: number, z1: number, alongX: boolean, seed: string): void => {
       // Hedge runs broken by flower beds, on the verge just outside the outer sidewalk.
       const rng = createRng(fnv1a32(seed))
@@ -282,7 +293,7 @@ export class Street {
 
     const ground = flats.build({ receiveShadow: true })
     content.add(ground, props.build({ castShadow: true, receiveShadow: true }))
-    this.addSurround(content, outer, outerProps, water, layout, plate, { x: xRoads, z: zRoads })
+    this.addSurround(content, outer, outerProps, water, plan, { x: xRoads, z: zRoads })
     content.add(outer.build({ receiveShadow: true }), outerProps.build({ castShadow: true, receiveShadow: true }))
     if (water.length > 0) {
       const merged = mergeGeometries(water, false)
@@ -378,24 +389,27 @@ export class Street {
     water.push(new THREE.BoxGeometry(0.75, 0.05, 0.75).translate(p.x, y + 1.36, p.z))
   }
 
-  /** Contact shadow under the plate, meadows, groves, shrubs, flower patches, a pond and road-side avenues. */
+  /**
+   * Contact shadow under the plate, the pond of the neighbourhood's pond park, and the countryside between the
+   * neighbourhood and the plate edge: meadows, groves, shrubs, flower patches and road-side avenues.
+   */
   private addSurround(
     content: THREE.Group,
     outer: VoxelBuilder,
     outerProps: VoxelBuilder,
     water: THREE.BufferGeometry[],
-    { bounds }: TownLayout,
-    plate: { x0: number; x1: number; z0: number; z1: number },
+    plan: OutskirtsPlan,
     roads: { x: number[]; z: number[] },
   ): void {
+    const plate = plan.plate
     const plateW = plate.x1 - plate.x0
     const plateD = plate.z1 - plate.z0
     const midX = (plate.x0 + plate.x1) / 2
     const midZ = (plate.z0 + plate.z1) / 2
     const rng = createRng(fnv1a32(`surround:${plateW.toFixed(1)},${plateD.toFixed(1)}`))
     const between = (lo: number, hi: number): number => lo + (hi - lo) * rng()
-    const nearTown = (x: number, z: number, gap: number): boolean =>
-      x > bounds.minX - gap && x < bounds.maxX + gap && z > bounds.minZ - gap && z < bounds.maxZ + gap
+    // The neighbourhood (town included) ends at its outermost lane; countryside stays clear of that lane too.
+    const nearHood = (x: number, z: number, gap: number): boolean => inHood(plan, x, z, LANE_HALF + gap)
     const nearRoad = (x: number, z: number, w: number): boolean =>
       roads.x.some((l) => Math.abs(x - l) < w) || roads.z.some((l) => Math.abs(z - l) < w)
     const inside = (x: number, z: number, inset: number): boolean =>
@@ -406,11 +420,11 @@ export class Street {
     shadow.renderOrder = 1
     content.add(shadow)
 
-    // Pond on the far right of the default view, clear of roads and the town.
-    const pond = { x: bounds.maxX + VERGE_W + 13, z: bounds.minZ - VERGE_W - 9, rx: 6.5, rz: 4.2 }
+    // Pond in the neighbourhood's pond park, on the right of the default view.
+    const pond = plan.pond ?? { x: 0, z: 0, rx: 0, rz: 0 }
     const inPond = (x: number, z: number, pad: number): boolean =>
       ((x - pond.x) / (pond.rx + pad)) ** 2 + ((z - pond.z) / (pond.rz + pad)) ** 2 < 1
-    const hasPond = inside(pond.x, pond.z, 10) && !nearRoad(pond.x, pond.z, pond.rx + 5)
+    const hasPond = plan.pond !== null
     if (hasPond) {
       // Blocky ellipse: rows of water with a sandy, stepped shore.
       for (let dz = -pond.rz; dz <= pond.rz + 1e-6; dz += 0.7) {
@@ -443,7 +457,7 @@ export class Street {
       const rx = between(3, 9)
       const rz = between(3, 9)
       const tone = Math.floor(rng() * 3)
-      if (!inside(x, z, Math.max(rx, rz)) || nearTown(x, z, VERGE_W + 1) || !clear(x, z, Math.max(rx, rz))) continue
+      if (!inside(x, z, Math.max(rx, rz)) || nearHood(x, z, Math.max(rx, rz)) || !clear(x, z, Math.max(rx, rz))) continue
       const c = material([PAL.meadow[0], PAL.meadow[1], PAL.grass[2]][tone])
       outer.box(x, GRASS_TOP, z, rx * 2, MEADOW_H[tone], rz * 1.2, c)
       outer.box(x + rx * 0.3, GRASS_TOP, z + rz * 0.2, rx * 1.2, MEADOW_H[tone], rz * 2, c)
@@ -461,14 +475,14 @@ export class Street {
         const cone = rng() < 0.4
         const s = between(0.95, 1.5)
         const v = 0.2 + 0.8 * rng()
-        if (roll < 0.02 + 0.75 * dense && inside(px, pz, 3) && !nearTown(px, pz, VERGE_W + 2) && !nearRoad(px, pz, 6) && clear(px, pz, 3)) {
-          voxelTree(outerProps, px, GRASS_TOP, pz, cone ? 'cone' : 'round', s, v)
-        } else if (roll > 0.9 && dense < 0.3 && inside(px, pz, 4) && !nearTown(px, pz, VERGE_W + 1) && !nearRoad(px, pz, 4) && clear(px, pz, 2)) {
+        if (roll < 0.02 + 0.75 * dense && inside(px, pz, 3) && !nearHood(px, pz, 2.4) && !nearRoad(px, pz, 6) && clear(px, pz, 3)) {
+          voxelTree(outer, px, GRASS_TOP, pz, cone ? 'cone' : 'round', s, v)
+        } else if (roll > 0.9 && dense < 0.3 && inside(px, pz, 4) && !nearHood(px, pz, 1.6) && !nearRoad(px, pz, 4) && clear(px, pz, 2)) {
           // Flower patch: a loose cluster of one or two colours.
           const c0 = PAL.flowers[Math.floor(rng() * PAL.flowers.length)]
           const c1 = PAL.flowers[Math.floor(rng() * PAL.flowers.length)]
           const n = 10 + Math.floor(rng() * 6)
-          for (let i = 0; i < n; i++) flower(outerProps, px + between(-1.3, 1.3), GRASS_TOP, pz + between(-1.0, 1.0), i % 3 ? c0 : c1, 1.4)
+          for (let i = 0; i < n; i++) flower(outer, px + between(-1.3, 1.3), GRASS_TOP, pz + between(-1.0, 1.0), i % 3 ? c0 : c1, 1.4)
         }
       }
     }
@@ -478,8 +492,8 @@ export class Street {
         const pz = z + between(0, CELL * 0.7)
         const s = between(0.8, 1.4)
         const v = rng()
-        if (rng() < 0.16 && inside(px, pz, 2) && !nearTown(px, pz, VERGE_W + 1) && !nearRoad(px, pz, 4.4) && clear(px, pz, 1.5)) {
-          voxelBush(outerProps, px, GRASS_TOP, pz, s, v)
+        if (rng() < 0.16 && inside(px, pz, 2) && !nearHood(px, pz, 1) && !nearRoad(px, pz, 4.4) && clear(px, pz, 1.5)) {
+          voxelBush(outer, px, GRASS_TOP, pz, s, v)
         }
       }
     }
@@ -487,9 +501,9 @@ export class Street {
     // Avenues: trees along the road lines that run out across the plate.
     const avenueOff = ASPHALT_W / 2 + KERB_W + SIDEWALK_WIDTH + 1.4
     const avenue = (x: number, z: number, seed: string): void => {
-      if (!inside(x, z, 2) || nearTown(x, z, VERGE_W + 1) || !clear(x, z, 2)) return
+      if (!inside(x, z, 2) || nearHood(x, z, 2) || !clear(x, z, 2)) return
       const v = createRng(fnv1a32(seed))()
-      voxelTree(outerProps, x, GRASS_TOP, z, v < 0.3 ? 'cone' : 'round', 0.95 + v * 0.25, v * 0.7 + 0.2)
+      voxelTree(outer, x, GRASS_TOP, z, v < 0.3 ? 'cone' : 'round', 0.95 + v * 0.25, v * 0.7 + 0.2)
     }
     for (const x of roads.x) {
       for (const s of [-1, 1]) for (let z = plate.z0 + 4; z < plate.z1 - 4; z += 9) avenue(x + s * avenueOff, z, `av:${x.toFixed(1)},${z.toFixed(1)},${s}`)

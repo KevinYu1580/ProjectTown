@@ -11,6 +11,8 @@ import { CharacterManager } from './characters/manager'
 import type { SceneClock } from './clock'
 import { computeLayout, type TownLayout } from './layout'
 import { Lot, LOT_Y } from './lot'
+import { Outskirts } from './outskirts'
+import { planOutskirts } from './outskirtsPlan'
 import { PAL } from './palette'
 import { PostFX } from './postfx'
 import { RenderLoop } from './loop'
@@ -55,12 +57,14 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
   private readonly postfx: PostFX
   private readonly sky: Sky
   private readonly street: Street
+  private readonly outskirts: Outskirts
   private readonly ambient: Ambient
   private readonly characters: CharacterManager
   private readonly hud: Hud
   private readonly loop: RenderLoop
   private readonly hint = document.createElement('div')
   private readonly lots = new Map<string, Lot>()
+  private readonly lite: boolean
   private emptyPatch: THREE.Group | null = null
   private settings: SceneSettings
   private state: TownState | null = null
@@ -85,8 +89,10 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
 
     // A software rasteriser (SwiftShader on CI) cannot afford the full effect stack: no shadows, MSAA or bloom.
     const lite = isSoftwareRenderer(rendererName(this.renderer.getContext()))
+    this.lite = lite
     this.sky = new Sky(this.scene, this.renderer, !lite)
     this.street = new Street(this.scene)
+    this.outskirts = new Outskirts(this.scene)
     this.ambient = new Ambient(this.scene)
     this.rig = new CameraRig(window.innerWidth / window.innerHeight)
     this.postfx = new PostFX(this.renderer, this.scene, this.rig.camera, lite)
@@ -236,6 +242,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.lots.clear()
     this.characters.dispose()
     this.street.dispose()
+    this.outskirts.dispose()
     this.ambient.dispose()
     this.sky.dispose()
     this.postfx.dispose()
@@ -253,6 +260,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.rig.update(dt)
     for (const lot of this.lots.values()) lot.tick(dt, now)
     this.characters.update(dt, now)
+    this.outskirts.update(dt)
     this.ambient.update(dt)
     if (!this.clock.frozen && now - this.lastLabelRefresh >= LABEL_REFRESH_MS) {
       this.lastLabelRefresh = now
@@ -281,7 +289,10 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
 
   private applyLayout(layout: TownLayout): void {
     this.layout = layout
-    this.street.build(layout)
+    // The background neighbourhood fills the view around the town; its plan also sizes the street's base plate.
+    const outskirts = planOutskirts(layout, { seed: this.seed, lite: this.lite })
+    this.street.build(layout, outskirts)
+    this.outskirts.build(outskirts)
     this.ambient.build(layout)
     this.maxHeight = -1
     this.refit()
@@ -319,6 +330,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.lightValid = true
     this.sky.apply(info)
     this.street.setLightLevel(info.level)
+    this.outskirts.setLightLevel(info.level)
     this.ambient.setLightLevel(info.level)
     this.characters.setLightLevel(info.level)
     for (const lot of this.lots.values()) lot.setLightLevel(info.level)
