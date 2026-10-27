@@ -1,8 +1,9 @@
-// Urban theme: a background neighbourhood around the town (placement in urbanPlan.ts): lanes, garden plots, houses, trees and
-// allotments in one vertex-coloured mesh that is tinted at night like the countryside, sparse warm windows in one
-// additive mesh, and small cars on the lanes (instanced). It never casts shadows, and nothing here is a person or carries a sign:
-// people stand for sessions and signs for projects. Cars follow an animation clock that only advances with dt, so a
-// frozen scene (dt = 0) always shows the same frame and never needs redrawing.
+// Urban theme: a background neighbourhood around the town (placement in urbanPlan.ts): lanes, garden plots, houses,
+// terraces, shops, apartment blocks, workshops, a school and a church, open spaces, trees and allotments in one
+// vertex-coloured mesh that is tinted at night like the countryside, sparse warm windows in one additive mesh, and small
+// cars on the lanes (instanced). It never casts shadows, and nothing here is a person or carries a sign: people stand for
+// sessions and signs for projects. Cars follow an animation clock that only advances with dt, so a frozen scene (dt = 0)
+// always shows the same frame and never needs redrawing.
 import * as THREE from 'three'
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
@@ -12,13 +13,14 @@ import { PAL } from '../palette'
 import { ASPHALT_W, GRASS_TOP, KERB_W, PLATE_H, type TownEdge } from '../street'
 import { VoxelBuilder, makeVoxelMaterial, material } from '../voxel'
 import {
-  ASPHALT_HALF, LANE_EDGE, LANE_HALF, LANE_W, MAIN_HALF, carPose, inHood, planOutskirts, type CarPose, type Facing, type House,
-  type OutskirtsPlan, type Plot, type Tree,
+  ASPHALT_HALF, LANE_EDGE, LANE_HALF, LANE_W, MAIN_HALF, STOREY, carPose, inHood, planOutskirts, roofTier, type CarPose, type Facing,
+  type House, type OutskirtsPlan, type Pad, type Plot, type Tree,
 } from './urbanPlan'
 
 const T0 = 41.3 // seconds; the frame a frozen scene shows
 const GROUND = -0.02 // block lawns: 0.03 above the plate's grass, below the road tops (y = 0)
-const PATH_Y = GROUND + 0.015
+const PATH_Y = GROUND + 0.015 // paths, aprons and open ground (never on top of each other)
+const LINE_Y = GROUND + 0.025 // court and car park lines, tufts on bare lots
 const SHADOW_Y = GROUND + 0.032
 const TREE_SWAY = 0.03
 // The neighbourhood sinks a little deeper into the night than the countryside, so the town's light stays the focus.
@@ -124,12 +126,45 @@ class Batch {
   }
 }
 
-// House-local frame per facing: front (f) and right (r) directions in the XZ plane, and which way the side walls face.
-const FRAME: Record<Facing, { fx: number; fz: number; rx: number; rz: number; right: Facing; left: Facing }> = {
-  'z+': { fx: 0, fz: 1, rx: 1, rz: 0, right: 'x+', left: 'x-' },
-  'z-': { fx: 0, fz: -1, rx: -1, rz: 0, right: 'x-', left: 'x+' },
-  'x+': { fx: 1, fz: 0, rx: 0, rz: -1, right: 'z-', left: 'z+' },
-  'x-': { fx: -1, fz: 0, rx: 0, rz: 1, right: 'z+', left: 'z-' },
+// House-local frame per facing: front (f) and right (r) directions in the XZ plane, and which way the other walls face.
+const FRAME: Record<Facing, { fx: number; fz: number; rx: number; rz: number; right: Facing; left: Facing; back: Facing }> = {
+  'z+': { fx: 0, fz: 1, rx: 1, rz: 0, right: 'x+', left: 'x-', back: 'z-' },
+  'z-': { fx: 0, fz: -1, rx: -1, rz: 0, right: 'x-', left: 'x+', back: 'z+' },
+  'x+': { fx: 1, fz: 0, rx: 0, rz: -1, right: 'z-', left: 'z+', back: 'x-' },
+  'x-': { fx: -1, fz: 0, rx: 0, rz: 1, right: 'z+', left: 'z-', back: 'x+' },
+}
+
+type Face = 'front' | 'back' | 'right' | 'left'
+interface Slot { face: Face; u: number; y: number; w: number; h: number }
+
+/**
+ * Drawing in a building's own frame: `u` across the front (to its right), `v` toward the front (the front wall is at
+ * v = d / 2). Boxes by their bottom centre; panels are openings on a face, `onWall` puts one on a wall `u` along it.
+ */
+function local(b: Batch, h: Pick<House, 'x' | 'z' | 'w' | 'd' | 'facing'>) {
+  const F = FRAME[h.facing]
+  const along = F.fx === 0
+  const pt = (u: number, v: number) => ({ x: h.x + u * F.rx + v * F.fx, z: h.z + u * F.rz + v * F.fz })
+  const box = (u: number, y: number, v: number, bw: number, bh: number, bd: number, c: THREE.Color, top: THREE.Color | null = c, foot = 1): void => {
+    const p = pt(u, v)
+    b.box(p.x, y, p.z, along ? bw : bd, bh, along ? bd : bw, c, top, foot)
+  }
+  const panel = (u: number, y: number, v: number, w: number, ht: number, face: Face, c: THREE.Color, out = b): void => {
+    const p = pt(u, v)
+    out.wall(p.x, y, p.z, w, ht, face === 'front' ? h.facing : F[face], c)
+  }
+  const onWall = (face: Face, u: number, y: number, w: number, ht: number, lift: number, c: THREE.Color, out = b): void => {
+    if (face === 'front' || face === 'back') panel(u, y, (face === 'front' ? 1 : -1) * (h.d / 2 + lift), w, ht, face, c, out)
+    else panel((face === 'right' ? 1 : -1) * (h.w / 2 + lift), y, u, w, ht, face, c, out)
+  }
+  return { pt, box, panel, onWall }
+}
+type Local = ReturnType<typeof local>
+
+/** Stable pseudo-random value in [0, 1) for window `i` of a building with variation `v`. */
+const hash01 = (i: number, v: number): number => {
+  const x = Math.sin(i * 12.9898 + v * 78.233) * 43758.5453
+  return x - Math.floor(x)
 }
 
 /** Palette colours, scaled by `k` and faded toward the haze with distance; cached (a few hundred per plan). */
@@ -197,8 +232,9 @@ export class Outskirts {
       if (b.kind === 'allotment' && !plan.lite) this.allotment(solid, b, tones, haze, s)
     }
     for (const p of plan.plots) this.plot(solid, p, tones, hazeAt((p.x0 + p.x1) / 2, (p.z0 + p.z1) / 2), s)
+    for (const p of plan.pads) this.pad(solid, p, tones, hazeAt((p.x0 + p.x1) / 2, (p.z0 + p.z1) / 2), s)
     this.lanes(solid, plan, tones, hazeAt)
-    for (const h of plan.houses) this.house(solid, glow, h, tones, hazeAt(h.x, h.z), s, plan.reach)
+    for (const h of plan.houses) this.building(solid, glow, h, tones, hazeAt(h.x, h.z), s, plan.reach)
     for (const t of plan.trees) this.tree(solid, t, tones, hazeAt(t.x, t.z))
 
     const mesh = new THREE.Mesh(solid.build(), this.mat)
@@ -293,48 +329,51 @@ export class Outskirts {
     this.lamps = null
   }
 
-  /** A small house: walls with a shaded foot, a stepped roof, door, windows and chimney up close; lit windows glow at night. */
-  private house(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, reach: number): void {
-    const F = FRAME[h.facing]
-    const { w, d, lod } = h
-    // Local box: centre (u, v) across / along the front direction, bottom at y.
-    const box = (u: number, y: number, v: number, bw: number, bh: number, bd: number, c: THREE.Color, top: THREE.Color | null = c, foot = 1) => {
-      const along = F.fx === 0
-      b.box(h.x + u * F.rx + v * F.fx, y, h.z + u * F.rz + v * F.fz, along ? bw : bd, bh, along ? bd : bw, c, top, foot)
-    }
-    // Point on a wall: 'front', 'back' or a side ('right' / 'left'), `u` along it, lifted a hair off the surface.
-    const onWall = (face: 'front' | 'right' | 'left', u: number, lift: number): { x: number; z: number; f: Facing } => {
-      if (face === 'front') return { x: h.x + u * F.rx + (d / 2 + lift) * F.fx, z: h.z + u * F.rz + (d / 2 + lift) * F.fz, f: h.facing }
-      const sgn = face === 'right' ? 1 : -1
-      return { x: h.x + sgn * (w / 2 + lift) * F.rx + u * F.fx, z: h.z + sgn * (w / 2 + lift) * F.rz + u * F.fz, f: face === 'right' ? F.right : F.left }
-    }
-
-    const wall = tones.get(PAL.bgWall[h.wall % PAL.bgWall.length], haze)
-    const wallTop = tones.get(PAL.bgWall[h.wall % PAL.bgWall.length], haze, 0.92)
-    const roofHex = PAL.bgHouseRoof[h.roofTone % PAL.bgHouseRoof.length]
-    const roof = tones.get(roofHex, haze)
-    const roofDark = tones.get(roofHex, haze, 0.78)
-    const roofLight = tones.get(roofHex, haze, 1.14)
-    const T = 0.3 * s
-
-    // Baked contact shadow on the lawn, toward +X / -Z.
-    const fx = h.facing[0] === 'z' ? w : d
-    const fz = h.facing[0] === 'z' ? d : w
+  /** One building: a baked contact shadow, then its kind's walls, roof and openings; a few lit windows glow at night. */
+  private building(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, reach: number): void {
+    // Baked contact shadow on the ground, toward +X / -Z.
+    const fx = h.facing[0] === 'z' ? h.w : h.d
+    const fz = h.facing[0] === 'z' ? h.d : h.w
     const o = Math.min(1.1 * s, 0.32 * h.h)
     const ox = h.x + SHADOW_DIR.x * o
     const oz = h.z + SHADOW_DIR.z * o
     b.flat(ox - fx / 2, oz - fz / 2 - 0.2 * s, ox + fx / 2 + 0.2 * s, oz + fz / 2, SHADOW_Y, tones.get(PAL.bgLawn[0], haze, 0.62))
+    // Night windows are dimmer the farther away. Additive and below the bloom threshold, so the town's own windows,
+    // signs and the "!" stay the brightest things in the scene.
+    const dim = 0.85 - 0.35 * smooth(0.4, 1.2, Math.hypot(h.x, h.z) / reach)
+    if (h.kind === 'house' || h.kind === 'terrace') this.house(b, glow, h, tones, haze, s, dim)
+    else if (h.kind === 'shop') this.shop(b, glow, h, tones, haze, s, dim)
+    else if (h.kind === 'flats' || h.kind === 'school') this.block(b, glow, h, tones, haze, s, dim)
+    else if (h.kind === 'works') this.works(b, glow, h, tones, haze, s, dim)
+    else if (h.kind === 'church') this.church(b, glow, h, tones, haze, s, dim)
+    else this.tower(b, h, tones, haze, s)
+  }
+
+  /** A house or terrace unit: walls with a shaded foot, a stepped roof, door, windows and chimney up close; a garage wing. */
+  private house(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, dim: number): void {
+    const wallHex = PAL.bgWall[h.wall % PAL.bgWall.length]
+    const wall = tones.get(wallHex, haze)
+    const wallTop = tones.get(wallHex, haze, 0.92)
+    const flatTop = tones.get(PAL.bgFlatRoof[Math.floor(h.v * 3)], haze)
+    if (h.annex !== 0) {
+      // Garage wing: low and flat-topped, flush with the front, a wide door; the house takes the rest of the width.
+      const aw = Math.abs(h.annex)
+      const au = (Math.sign(h.annex) * (h.w - aw)) / 2
+      const ad = Math.min(h.d, 3.3 * s)
+      const A = local(b, h)
+      A.box(au, GROUND, (h.d - ad) / 2, aw, 2.2 * s, ad, wall, flatTop, 0.8)
+      if (h.lod < 2) A.panel(au, GROUND + 0.78 * s, h.d / 2 + 0.02 * s, aw - 0.5 * s, 1.5 * s, 'front', tones.get(PAL.bgShedDoor, haze))
+      const c = A.pt((-Math.sign(h.annex) * aw) / 2, 0)
+      h = { ...h, w: h.w - aw, annex: 0, x: c.x, z: c.z }
+    }
+    const L = local(b, h)
+    const { w, d, lod } = h
 
     // Front path to the road and a low hedge on either side of it (close up only).
     if (lod < 2) {
       const pw = 0.7 * s
       const doorU = this.doorU(h, s)
-      const p0 = onWall('front', doorU, 0)
-      const dist = Math.abs(h.front - (h.facing[0] === 'z' ? p0.z : p0.x))
-      const along = F.fx === 0
-      const cx = p0.x + F.fx * dist / 2
-      const cz = p0.z + F.fz * dist / 2
-      b.flat(cx - (along ? pw / 2 : dist / 2), cz - (along ? dist / 2 : pw / 2), cx + (along ? pw / 2 : dist / 2), cz + (along ? dist / 2 : pw / 2), PATH_Y, tones.get(PAL.bgPath, haze))
+      const dist = this.apron(b, L, h, doorU - pw / 2, doorU + pw / 2, tones.get(PAL.bgPath, haze))
       if (lod === 0 && !h.attached && dist > 1.2 * s) {
         const hedge = tones.get(PAL.hedge[1], haze)
         const hedgeTop = tones.get(PAL.hedge[2], haze)
@@ -342,61 +381,416 @@ export class Outskirts {
         const v = d / 2 + dist - 0.35 * s
         const half = (w / 2 - (doorU + pw / 2 + 0.1 * s)) / 2
         const half2 = (doorU - pw / 2 - 0.1 * s + w / 2) / 2
-        if (half > 0.3 * s) box(doorU + pw / 2 + 0.1 * s + half, GROUND, v, 2 * half, 0.5 * s, 0.4 * s, hedge, hedgeTop)
-        if (half2 > 0.3 * s) box(doorU - pw / 2 - 0.1 * s - half2, GROUND, v, 2 * half2, 0.5 * s, 0.4 * s, hedge, hedgeTop)
+        if (half > 0.3 * s) L.box(doorU + pw / 2 + 0.1 * s + half, GROUND, v, 2 * half, 0.5 * s, 0.4 * s, hedge, hedgeTop)
+        if (half2 > 0.3 * s) L.box(doorU - pw / 2 - 0.1 * s - half2, GROUND, v, 2 * half2, 0.5 * s, 0.4 * s, hedge, hedgeTop)
       }
     }
 
-    if (lod === 0) box(0, GROUND, 0, w + 0.14 * s, 0.32 * s, d + 0.14 * s, tones.get(PAL.bgPlinth, haze))
+    if (lod === 0) L.box(0, GROUND, 0, w + 0.14 * s, 0.32 * s, d + 0.14 * s, tones.get(PAL.bgPlinth, haze))
     // The roof covers the top of the walls (a flat roof is its top face).
-    const flatTop = tones.get(PAL.bgPlinth, haze)
-    box(0, GROUND, 0, w, h.h, d, wall, h.roof === 'flat' && lod === 2 ? flatTop : null, 0.8)
-
-    // Roof: an overhanging eave course and stepped tiers (a gable ridge runs along the front; a hip steps all round).
-    // Far away (small, and blurred by the tilt-shift) the eave course alone reads as the roof.
+    L.box(0, GROUND, 0, w, h.h, d, wall, h.roof === 'flat' && lod === 2 ? flatTop : null, 0.8)
     const top = GROUND + h.h
     if (h.roof === 'flat') {
-      if (lod < 2) box(0, top, 0, w + 0.12 * s, 0.24 * s, d + 0.12 * s, wallTop, flatTop)
-      if (lod === 0) box(-w * 0.18, top + 0.24 * s, -d * 0.1, w * 0.3, 0.5 * s, d * 0.34, wall, wallTop)
+      // Attached units keep their parapets flush, so neighbours never overlap.
+      if (lod < 2) L.box(0, top, 0, w + (h.attached ? 0 : 0.12 * s), 0.24 * s, d + 0.12 * s, wallTop, flatTop)
+      if (lod === 0 && !h.attached) L.box(-w * 0.18, top + 0.24 * s, -d * 0.1, w * 0.3, 0.5 * s, d * 0.34, wall, wallTop)
     } else {
-      const ew = w + (h.attached ? 0 : 0.36 * s)
-      const ed = d + 0.44 * s
-      const hip = h.roof === 'hip'
-      box(0, top, 0, ew, T, ed, roofDark, roof)
-      if (lod < 2) {
-        box(0, top + T, 0, hip ? ew * 0.68 : ew - 0.12 * s, T, ed * 0.62, roofDark, roof)
-        box(0, top + 2 * T, 0, hip ? ew * 0.36 : ew - 0.24 * s, T * 0.9, ed * 0.26, roof, roofLight)
-        if (h.chimney) box(w * 0.27, top, -d * 0.16, 0.42 * s, 3 * T + 0.45 * s, 0.42 * s, tones.get(PAL.bgChimney, haze), tones.get(PAL.bgChimney, haze, 0.8))
-      }
+      this.roof(L, h, tones, haze, s, PAL.bgHouseRoof[h.roofTone % PAL.bgHouseRoof.length])
+      const T = roofTier(h.kind) * s
+      if (lod < 2 && h.chimney) L.box(w * 0.27, top, -d * 0.16, 0.42 * s, 3 * T + 0.45 * s, 0.42 * s, tones.get(PAL.bgChimney, haze), tones.get(PAL.bgChimney, haze, 0.8))
     }
 
-    // Openings: door, windows on the front (both floors) and one per free side wall.
+    // Openings: door, windows on the front (every floor) and one per free side wall.
     const slots = this.windows(h, s)
+    const dU = this.doorU(h, s)
     if (lod < 2) {
       const glass = tones.get(PAL.bgGlass, haze)
-      const dU = this.doorU(h, s)
-      const door = onWall('front', dU, 0.02 * s)
-      b.wall(door.x, GROUND + 0.62 * s, door.z, 0.62 * s, 1.2 * s, door.f, tones.get(PAL.bgDoor, haze))
-      for (const sl of slots) {
-        const pt = onWall(sl.face, sl.u, 0.02 * s)
-        b.wall(pt.x, sl.y, pt.z, sl.w, sl.h, pt.f, glass)
-      }
+      L.onWall('front', dU, GROUND + 0.62 * s, 0.62 * s, 1.2 * s, 0.02 * s, tones.get(PAL.bgDoor, haze))
+      for (const sl of slots) L.onWall(sl.face, sl.u, sl.y, sl.w, sl.h, 0.02 * s, glass)
     }
-    // Night: a few windows lit and now and then a porch lamp, dimmer the farther away. Additive and below the bloom
-    // threshold, so the town's own windows, signs and the "!" stay the brightest things in the scene.
-    const dim = 0.85 - 0.35 * smooth(0.4, 1.2, Math.hypot(h.x, h.z) / reach)
+    // Night: a few windows lit and now and then a porch lamp.
     if (h.lights > 0 && slots.length > 0) {
       for (let i = 0; i < h.lights; i++) {
         const sl = slots[Math.floor(h.v * 97 + i * 3) % slots.length]
-        const pt = onWall(sl.face, sl.u, 0.05 * s)
-        const c = col(PAL.bgGlow).multiplyScalar(dim * (i % 2 === 0 ? 1 : 0.86))
-        glow.wall(pt.x, sl.y, pt.z, sl.w * 0.92, sl.h * 0.92, pt.f, c)
+        L.onWall(sl.face, sl.u, sl.y, sl.w * 0.92, sl.h * 0.92, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * (i % 2 === 0 ? 1 : 0.86)), glow)
       }
     }
     if (lod < 2 && h.v > 0.6) {
-      const dU = this.doorU(h, s)
-      const lamp = onWall('front', dU + (dU > 0 ? -0.5 : 0.5) * s, 0.05 * s)
-      glow.wall(lamp.x, GROUND + 1.45 * s, lamp.z, 0.16 * s, 0.2 * s, lamp.f, col(PAL.bgGlow).multiplyScalar(dim * 0.9))
+      L.onWall('front', dU + (dU > 0 ? -0.5 : 0.5) * s, GROUND + 1.45 * s, 0.16 * s, 0.2 * s, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * 0.9), glow)
+    }
+  }
+
+  /**
+   * Stepped roof: an overhanging eave course, then tiers (a gable's ridge runs along the front, a cross gable's from front
+   * to back, a hip steps all round, a shed roof rises to the back; a church's is steeper). Far away (small, and blurred by
+   * the tilt-shift) the eave course alone reads as the roof.
+   */
+  private roof(L: Local, h: House, tones: Tones, haze: number, s: number, hex: number): void {
+    const T = roofTier(h.kind) * s
+    const roof = tones.get(hex, haze)
+    const dark = tones.get(hex, haze, 0.78)
+    const light = tones.get(hex, haze, 1.14)
+    const ew = h.w + (h.attached ? 0 : 0.36 * s)
+    const ed = h.d + 0.44 * s
+    let y = GROUND + h.h
+    L.box(0, y, 0, ew, T, ed, dark, roof)
+    if (h.lod === 2) return
+    // Tiers above it: width, depth, offset toward the front, height.
+    const tiers: Array<[number, number, number, number]> =
+      h.roof === 'gable' ? [[ew - 0.12 * s, ed * 0.62, 0, T], [ew - 0.24 * s, ed * 0.26, 0, 0.9 * T]]
+        : h.roof === 'hip' ? [[ew * 0.68, ed * 0.62, 0, T], [ew * 0.36, ed * 0.26, 0, 0.9 * T]]
+          : h.roof === 'shed' ? [[ew, ed * 0.66, -ed * 0.17, T], [ew, ed * 0.33, -ed * 0.335, 0.9 * T]]
+            : h.kind === 'church' ? [[ew * 0.74, ed - 0.1 * s, 0, T], [ew * 0.48, ed - 0.2 * s, 0, T], [ew * 0.22, ed - 0.3 * s, 0, 0.9 * T]]
+              : [[ew * 0.62, ed - 0.12 * s, 0, T], [ew * 0.26, ed - 0.24 * s, 0, 0.9 * T]]
+    y += T
+    tiers.forEach(([tw, td, tv, th], i) => {
+      const last = i === tiers.length - 1
+      L.box(0, y, tv, tw, th, td, last ? roof : dark, last ? light : roof)
+      y += th
+    })
+  }
+
+  /** Ground strip from the front wall to the street edge, `u0` to `u1` across the front; returns its length. */
+  private apron(b: Batch, L: Local, h: House, u0: number, u1: number, c: THREE.Color): number {
+    const p = L.pt(u0, h.d / 2)
+    const q = L.pt(u1, h.d / 2)
+    const alongX = h.facing[0] === 'z'
+    const xs = alongX ? [p.x, q.x] : [p.x, h.front]
+    const zs = alongX ? [p.z, h.front] : [p.z, q.z]
+    b.flat(Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), PATH_Y, c)
+    return Math.abs(h.front - (alongX ? p.z : p.x))
+  }
+
+  /** Corner shop: a darker shop floor with wide windows round the corner under a muted awning, a paved front, flat roof. */
+  private shop(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, dim: number): void {
+    const L = local(b, h)
+    const { w, d, lod } = h
+    const hex = PAL.bgWall[h.wall % PAL.bgWall.length]
+    const wall = tones.get(hex, haze)
+    const wallTop = tones.get(hex, haze, 0.92)
+    const base = tones.get(hex, haze, 0.84)
+    const flatTop = tones.get(PAL.bgFlatRoof[Math.floor(h.v * 3)], haze)
+    const gH = (0.35 + STOREY) * s
+    const top = GROUND + h.h
+    L.box(0, GROUND, 0, w, gH, d, base, h.storeys === 1 && lod === 2 ? flatTop : null, 0.8)
+    if (h.storeys > 1) L.box(0, GROUND + gH, 0, w, h.h - gH, d, wall, lod === 2 ? flatTop : null)
+    const shopW = w - 1.0 * s
+    const sideW = Math.min(1.5 * s, d - 1.2 * s)
+    if (lod < 2) {
+      const glass = tones.get(PAL.bgGlass, haze)
+      const awning = PAL.bgAwning[h.roofTone % PAL.bgAwning.length]
+      L.box(0, top, 0, w + 0.12 * s, 0.24 * s, d + 0.12 * s, wallTop, flatTop)
+      L.onWall('front', 0, GROUND + 1.05 * s, shopW, 1.3 * s, 0.02 * s, glass)
+      for (const side of ['right', 'left'] as const) L.onWall(side, d / 2 - 0.45 * s - sideW / 2, GROUND + 1.05 * s, sideW, 1.3 * s, 0.02 * s, glass)
+      L.box(0, GROUND + 2.0 * s, d / 2 + 0.3 * s, w - 0.3 * s, 0.14 * s, 0.6 * s, tones.get(awning, haze, 0.8), tones.get(awning, haze))
+      this.apron(b, L, h, -w / 2, w / 2, tones.get(PAL.bgPave[1], haze))
+      // Flats above: windows on every upper floor.
+      for (let k = 1; k < h.storeys; k++) {
+        const y = GROUND + (0.35 + (k + 0.55) * STOREY) * s
+        for (const u of w >= 4.6 * s ? [-w / 3, 0, w / 3] : [-w / 4, w / 4]) L.onWall('front', u, y, 0.62 * s, 0.75 * s, 0.02 * s, glass)
+        for (const side of ['right', 'left'] as const) L.onWall(side, 0, y, 0.7 * s, 0.75 * s, 0.02 * s, glass)
+        for (const u of [-w / 4, w / 4]) L.onWall('back', u, y, 0.62 * s, 0.75 * s, 0.02 * s, glass)
+      }
+      L.onWall('back', w / 4, GROUND + 1.45 * s, 0.62 * s, 0.7 * s, 0.02 * s, glass)
+    }
+    // Night: the shop window glows (when open), and a lit window or two upstairs.
+    if (h.lights > 0) {
+      L.onWall('front', 0, GROUND + 1.05 * s, shopW * 0.96, 1.2 * s, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * 0.55), glow)
+      for (let k = 1; k < h.lights; k++) {
+        L.onWall('front', ((k % 2) - 0.5) * (w / 2), GROUND + (0.35 + (k + 0.55) * STOREY) * s, 0.57 * s, 0.7 * s, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * 0.9), glow)
+      }
+    }
+  }
+
+  /**
+   * Apartment block or school: a darker ground floor, rows of windows (one band per storey a little farther away),
+   * an entrance with a canopy, a parapet with rooftop boxes or a hip roof; balconies on some blocks up close.
+   */
+  private block(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, dim: number): void {
+    const L = local(b, h)
+    const { w, d, lod } = h
+    const school = h.kind === 'school'
+    const pal = school ? PAL.bgWall : PAL.bgFlats
+    const hex = pal[h.wall % pal.length]
+    const wall = tones.get(hex, haze)
+    const wallTop = tones.get(hex, haze, 0.92)
+    const flatTop = tones.get(PAL.bgFlatRoof[Math.floor(h.v * 3)], haze)
+    const gH = (0.35 + STOREY) * s
+    const top = GROUND + h.h
+    if (lod === 0) L.box(0, GROUND, 0, w + 0.14 * s, 0.32 * s, d + 0.14 * s, tones.get(PAL.bgPlinth, haze))
+    L.box(0, GROUND, 0, w, gH, d, tones.get(hex, haze, 0.86), null, 0.8)
+    L.box(0, GROUND + gH, 0, w, h.h - gH, d, wall, h.roof === 'flat' && lod === 2 ? flatTop : null)
+    if (h.roof !== 'flat') this.roof(L, h, tones, haze, s, PAL.bgHouseRoof[h.roofTone % PAL.bgHouseRoof.length])
+    else if (lod < 2) {
+      L.box(0, top, 0, w + 0.1 * s, 0.3 * s, d + 0.1 * s, wallTop, flatTop)
+      if (!school) {
+        // Stair and lift housing, and up close a water tank.
+        L.box((h.v - 0.5) * (w - 3 * s), top + 0.3 * s, -d * 0.12, 1.8 * s, 0.8 * s, 1.5 * s, wall, wallTop)
+        if (lod === 0) L.box((h.v < 0.5 ? 0.3 : -0.3) * w, top + 0.3 * s, d * 0.2, 0.8 * s, 0.55 * s, 0.8 * s, tones.get(PAL.bgShedRoof[1], haze, 0.9), tones.get(PAL.bgShedRoof[0], haze))
+      }
+    }
+    const slots = this.grid(h, s)
+    if (lod === 0) {
+      const glass = tones.get(PAL.bgGlass, haze)
+      for (const sl of slots) L.onWall(sl.face, sl.u, sl.y, sl.w, sl.h, 0.02 * s, glass)
+    } else {
+      // Farther away one band of glass per storey and face: a big block never reads as a blank box.
+      const band = tones.get(PAL.bgGlass, haze, 1.12)
+      for (let k = 0; k < h.storeys; k++) {
+        const y = GROUND + (0.35 + (k + 0.55) * STOREY) * s
+        for (const face of ['front', 'back', 'right', 'left'] as const) L.onWall(face, 0, y, (face === 'front' || face === 'back' ? w : d) - 1.0 * s, 0.6 * s, 0.02 * s, band)
+      }
+    }
+    if (lod < 2) {
+      if (!school && lod === 0 && h.v < 0.55) {
+        // Balconies: a light slab with a parapet below each upper row of windows.
+        const bal = tones.get(PAL.bgFlats[0], haze, 0.97)
+        for (let k = 1; k < h.storeys; k++) L.box(0, GROUND + (0.3 + k * STOREY) * s, d / 2 + 0.3 * s, w * 0.84, 0.5 * s, 0.6 * s, bal, bal)
+      }
+      const door = school ? 1.6 * s : 1.0 * s
+      L.onWall('front', 0, GROUND + 0.75 * s, door, 1.4 * s, 0.02 * s, tones.get(PAL.bgDoor, haze))
+      L.box(0, GROUND + 1.6 * s, d / 2 + 0.35 * s, door + 0.8 * s, 0.14 * s, 0.7 * s, wallTop, flatTop)
+      this.apron(b, L, h, -door / 2 - 0.2 * s, door / 2 + 0.2 * s, tones.get(PAL.bgPath, haze))
+    }
+    // Night: a scattering of lit windows.
+    const n = Math.min(h.lights, slots.length)
+    slots.forEach((sl, i) => {
+      if (hash01(i, h.v) * slots.length >= n) return
+      L.onWall(sl.face, sl.u, sl.y, sl.w * 0.92, sl.h * 0.92, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * (i % 2 === 0 ? 1 : 0.84)), glow)
+    })
+  }
+
+  /** Window grid of an apartment block or a school: every storey on all four walls, the entrance left clear. */
+  private grid(h: House, s: number): Slot[] {
+    const out: Slot[] = []
+    const school = h.kind === 'school'
+    const step = 1.6 * s
+    const ww = (school ? 1.0 : 0.62) * s
+    const wh = (school ? 0.95 : 0.8) * s
+    const nf = Math.max(2, Math.floor((h.w - 0.8 * s) / step))
+    const ns = Math.max(1, Math.floor((h.d - 0.8 * s) / step))
+    for (let k = 0; k < h.storeys; k++) {
+      const y = GROUND + (0.35 + (k + 0.55) * STOREY) * s
+      for (let i = 0; i < nf; i++) {
+        const u = (i - (nf - 1) / 2) * step
+        if (k > 0 || Math.abs(u) > 1.0 * s) out.push({ face: 'front', u, y, w: ww, h: wh })
+        out.push({ face: 'back', u, y, w: ww, h: wh })
+      }
+      for (let i = 0; i < ns; i++) {
+        const u = (i - (ns - 1) / 2) * step
+        out.push({ face: 'right', u, y, w: ww, h: wh }, { face: 'left', u, y, w: ww, h: wh })
+      }
+    }
+    return out
+  }
+
+  /** Workshop or small warehouse: sheet-metal walls, a sawtooth, shallow gable or flat roof, a wide door, high windows. */
+  private works(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, dim: number): void {
+    const L = local(b, h)
+    const { w, d, lod } = h
+    const wall = tones.get(PAL.bgShed[h.wall % PAL.bgShed.length], haze)
+    const roofHex = PAL.bgShedRoof[Math.floor(h.v * 2)]
+    const flatTop = tones.get(PAL.bgFlatRoof[Math.floor(h.v * 3)], haze)
+    const top = GROUND + h.h
+    const capped = h.roof === 'flat' || (h.roof === 'saw' && lod === 2)
+    L.box(0, GROUND, 0, w, h.h, d, wall, capped ? (h.roof === 'flat' ? flatTop : tones.get(roofHex, haze)) : null, 0.8)
+    if (h.roof === 'gable') this.roof(L, h, tones, haze, s, roofHex)
+    else if (h.roof === 'flat' && lod < 2) L.box(0, top, 0, w + 0.1 * s, 0.22 * s, d + 0.1 * s, wall, flatTop)
+    else if (h.roof === 'saw' && lod < 2) {
+      // Sawtooth: teeth across the width, each stepping up to a glazed face.
+      const n = Math.max(2, Math.round(w / (2.6 * s)))
+      const tw = w / n
+      const th = 0.36 * s
+      const roof = tones.get(roofHex, haze)
+      const dark = tones.get(roofHex, haze, 0.8)
+      const glass = tones.get(PAL.bgGlass, haze, 1.1)
+      for (let i = 1; i <= n; i++) {
+        const u1 = -w / 2 + i * tw
+        for (let k = 0; k < 3; k++) L.box(u1 - (tw * (3 - k)) / 6, top + k * th, 0, (tw * (3 - k)) / 3, th, d, dark, roof)
+        L.panel(u1 + 0.02 * s, top + 2 * th, 0, d * 0.88, 1.6 * th, 'right', glass)
+      }
+    }
+    const du = (h.v - 0.5) * Math.max(0, w - 4 * s)
+    if (lod < 2) {
+      L.onWall('front', du, GROUND + 1.3 * s, 2.8 * s, 2.6 * s, 0.02 * s, tones.get(PAL.bgShedDoor, haze))
+      L.onWall('front', du + (du > 0 ? -2.3 : 2.3) * s, GROUND + 0.62 * s, 0.62 * s, 1.2 * s, 0.02 * s, tones.get(PAL.bgDoor, haze))
+      const glass = tones.get(PAL.bgGlass, haze)
+      for (const face of ['back', 'right', 'left'] as const) L.onWall(face, 0, top - 0.65 * s, (face === 'back' ? w : d) * 0.7, 0.4 * s, 0.02 * s, glass)
+    }
+    // Night: a lamp over the big door.
+    if (h.lights > 0) L.onWall('front', du, GROUND + 2.9 * s, 0.5 * s, 0.18 * s, 0.06 * s, col(PAL.bgGlow).multiplyScalar(dim * 0.9), glow)
+  }
+
+  /** Church nave: pale stone, a steep slate roof, tall windows along both sides (two glow dimly at night). */
+  private church(b: Batch, glow: Batch, h: House, tones: Tones, haze: number, s: number, dim: number): void {
+    const L = local(b, h)
+    const { d, lod } = h
+    if (lod === 0) L.box(0, GROUND, 0, h.w + 0.14 * s, 0.32 * s, d + 0.14 * s, tones.get(PAL.bgPlinth, haze))
+    L.box(0, GROUND, 0, h.w, h.h, d, tones.get(PAL.bgChurch[0], haze), null, 0.8)
+    this.roof(L, h, tones, haze, s, PAL.bgChurch[1])
+    const n = Math.max(2, Math.floor(d / (2.2 * s)))
+    const glass = tones.get(PAL.bgGlass, haze)
+    for (let i = 0; i < n; i++) {
+      const u = (i - (n - 1) / 2) * (d / n)
+      for (const side of ['right', 'left'] as const) {
+        if (lod < 2) L.onWall(side, u, GROUND + 2.2 * s, 0.5 * s, 1.9 * s, 0.02 * s, glass)
+        if (h.lights > 0 && (i + (side === 'right' ? 0 : 1)) % 3 === 0) {
+          L.onWall(side, u, GROUND + 2.2 * s, 0.46 * s, 1.8 * s, 0.05 * s, col(PAL.bgGlow).multiplyScalar(dim * 0.55), glow)
+        }
+      }
+    }
+    if (lod < 2) L.onWall('back', 0, GROUND + h.h - 1.1 * s, 0.9 * s, 0.9 * s, 0.02 * s, glass)
+  }
+
+  /** Church tower: a stone shaft with belfry openings and a cornice, a stepped lead spire, the church door at its foot. */
+  private tower(b: Batch, h: House, tones: Tones, haze: number, s: number): void {
+    const L = local(b, h)
+    const { w, d, lod } = h
+    const stoneTop = tones.get(PAL.bgChurch[0], haze, 0.9)
+    const lead = tones.get(PAL.bgChurch[2], haze, 0.85)
+    const leadTop = tones.get(PAL.bgChurch[2], haze, 1.05)
+    let y = GROUND + h.h
+    if (lod === 0) L.box(0, GROUND, 0, w + 0.14 * s, 0.32 * s, d + 0.14 * s, tones.get(PAL.bgPlinth, haze))
+    L.box(0, GROUND, 0, w, h.h, d, tones.get(PAL.bgChurch[0], haze), null, 0.8)
+    L.box(0, y, 0, w + 0.2 * s, 0.3 * s, d + 0.2 * s, stoneTop, stoneTop)
+    y += 0.3 * s
+    const steps = lod === 2 ? [[0.7, 1.6], [0.3, 1.6]] : [[0.82, 0.8], [0.62, 0.85], [0.42, 0.9], [0.24, 0.9], [0.1, 0.45]]
+    for (const [k, sh] of steps) {
+      L.box(0, y, 0, w * k, sh * s, d * k, lead, leadTop)
+      y += sh * s
+    }
+    if (lod < 2) {
+      const dark = tones.get(PAL.bgDoor, haze, 0.7)
+      for (const face of ['front', 'back', 'right', 'left'] as const) L.onWall(face, 0, GROUND + h.h - 1.0 * s, 0.6 * s, 1.0 * s, 0.02 * s, dark)
+      L.onWall('front', 0, GROUND + 0.8 * s, 0.8 * s, 1.5 * s, 0.02 * s, tones.get(PAL.bgDoor, haze))
+    }
+  }
+
+  /** Open ground: car park, sports court, playground, little square, works yard or bare lot; their details up close only. */
+  private pad(b: Batch, p: Pad, tones: Tones, haze: number, s: number): void {
+    const alongX = p.x1 - p.x0 >= p.z1 - p.z0
+    const len = alongX ? p.x1 - p.x0 : p.z1 - p.z0 // along the long side (a), across it (c)
+    const dep = alongX ? p.z1 - p.z0 : p.x1 - p.x0
+    const flat = (a0: number, a1: number, c0: number, c1: number, y: number, c: THREE.Color): void =>
+      alongX ? b.flat(p.x0 + a0, p.z0 + c0, p.x0 + a1, p.z0 + c1, y, c) : b.flat(p.x0 + c0, p.z0 + a0, p.x0 + c1, p.z0 + a1, y, c)
+    const box = (a: number, c: number, y: number, bl: number, bh: number, bd: number, col: THREE.Color, top: THREE.Color = col): void =>
+      alongX ? b.box(p.x0 + a, y, p.z0 + c, bl, bh, bd, col, top) : b.box(p.x0 + c, y, p.z0 + a, bd, bh, bl, col, top)
+    const near = p.lod < 2
+    const rng = createRng(fnv1a32(`pad:${p.x0.toFixed(1)},${p.z0.toFixed(1)}`))
+    const line = tones.get(PAL.bgLine, haze)
+    const t = 0.07 * s
+    switch (p.kind) {
+      case 'parking': {
+        flat(0, len, 0, dep, PATH_Y, tones.get(PAL.bgLane, haze, 1.16))
+        if (!near) break
+        // Stalls along both long edges (one where it is narrow), a car in fewer than half of them.
+        const sw = 1.3 * s
+        const sd = Math.min(2.3 * s, dep / 2)
+        const n = Math.floor((len - 0.4 * s) / sw)
+        const a0 = (len - n * sw) / 2
+        for (const c0 of dep >= 4.4 * s ? [0, dep - sd] : [0]) {
+          for (let i = 0; i <= n; i++) flat(a0 + i * sw - t / 2, a0 + i * sw + t / 2, c0 + 0.15 * s, c0 + sd - 0.15 * s, LINE_Y, line)
+          for (let i = 0; i < n; i++) {
+            if (rng() > 0.45) continue
+            const body = tones.get(PAL.bgCar[Math.floor(rng() * PAL.bgCar.length)], haze)
+            box(a0 + (i + 0.5) * sw, c0 + sd / 2, GROUND, 0.84 * s, 0.5 * s, 1.64 * s, body, body)
+            box(a0 + (i + 0.5) * sw, c0 + sd / 2, GROUND + 0.5 * s, 0.72 * s, 0.28 * s, 0.9 * s, tones.get(0x3a4250, haze), body)
+          }
+        }
+        break
+      }
+      case 'court': {
+        // Paving round a court of muted colour with light lines; a net or two hoops.
+        const m = Math.min(1.0 * s, dep * 0.15)
+        const pave = tones.get(PAL.bgPave[0], haze)
+        flat(0, len, 0, m, PATH_Y, pave)
+        flat(0, len, dep - m, dep, PATH_Y, pave)
+        flat(0, m, m, dep - m, PATH_Y, pave)
+        flat(len - m, len, m, dep - m, PATH_Y, pave)
+        flat(m, len - m, m, dep - m, PATH_Y, tones.get(PAL.bgCourt[Math.floor(p.v * PAL.bgCourt.length)], haze))
+        if (!near) break
+        const [l0, l1, c0, c1] = [m + 0.3 * s, len - m - 0.3 * s, m + 0.3 * s, dep - m - 0.3 * s]
+        flat(l0, l1, c0, c0 + t, LINE_Y, line)
+        flat(l0, l1, c1 - t, c1, LINE_Y, line)
+        flat(l0, l0 + t, c0 + t, c1 - t, LINE_Y, line)
+        flat(l1 - t, l1, c0 + t, c1 - t, LINE_Y, line)
+        flat(len / 2 - t / 2, len / 2 + t / 2, c0 + t, c1 - t, LINE_Y, line)
+        const post = tones.get(PAL.bgShedDoor, haze)
+        if (p.v < 0.5) box(len / 2, dep / 2, GROUND, 0.06 * s, 0.55 * s, c1 - c0, tones.get(PAL.bgLine, haze, 0.85))
+        else {
+          for (const [a, k] of [[l0 + 0.2 * s, 1], [l1 - 0.2 * s, -1]]) {
+            box(a, dep / 2, GROUND, 0.1 * s, 1.6 * s, 0.1 * s, post)
+            box(a + k * 0.15 * s, dep / 2, GROUND + 1.35 * s, 0.08 * s, 0.45 * s, 0.6 * s, line)
+          }
+        }
+        break
+      }
+      case 'playground': {
+        flat(0, len, 0, dep, PATH_Y, tones.get(PAL.bgSandpit, haze))
+        if (!near) break
+        const [frame, slide, deck] = PAL.bgPlay.map((c) => tones.get(c, haze))
+        // A slide (a deck on a tower, a chute stepping down), and a swing frame.
+        const a = len * (0.22 + 0.1 * p.v)
+        const c = dep * 0.5
+        box(a, c, GROUND, 0.8 * s, 1.0 * s, 0.8 * s, frame, deck)
+        box(a, c, GROUND + 1.0 * s, 0.9 * s, 0.5 * s, 0.9 * s, deck, deck)
+        for (let k = 0; k < 3; k++) box(a + (0.7 + 0.5 * k) * s, c, GROUND, 0.5 * s, (0.75 - 0.25 * k) * s, 0.45 * s, slide)
+        const sa = len * 0.72
+        for (const k of [-1, 1]) box(sa + k * 1.0 * s, c, GROUND, 0.1 * s, 1.5 * s, 0.1 * s, frame)
+        box(sa, c, GROUND + 1.5 * s, 2.1 * s, 0.1 * s, 0.1 * s, frame)
+        for (const k of [-0.45, 0.45]) box(sa + k * s, c, GROUND + 0.45 * s, 0.4 * s, 0.06 * s, 0.25 * s, slide)
+        break
+      }
+      case 'plaza': {
+        // Paving in large squares of two tones; a fountain in the middle and benches where there is room.
+        const [dark, light] = PAL.bgPave.map((c) => tones.get(c, haze))
+        const na = Math.max(1, Math.round(len / (2.2 * s)))
+        const nc = Math.max(1, Math.round(dep / (2.2 * s)))
+        for (let i = 0; i < na; i++) {
+          for (let j = 0; j < nc; j++) flat((i * len) / na, ((i + 1) * len) / na, (j * dep) / nc, ((j + 1) * dep) / nc, PATH_Y, (i + j) % 2 ? light : dark)
+        }
+        if (!near || Math.min(len, dep) < 3.6 * s) break
+        const stone = tones.get(PAL.bgChurch[0], haze, 0.92)
+        if (p.v < 0.5) {
+          // A fountain: a low basin of water with a spout.
+          box(len / 2, dep / 2, GROUND, 2.0 * s, 0.4 * s, 2.0 * s, stone, tones.get(PAL.bgPool, haze))
+          box(len / 2, dep / 2, GROUND + 0.4 * s, 0.3 * s, 0.5 * s, 0.3 * s, stone)
+        } else {
+          // A raised bed with a clipped shrub.
+          box(len / 2, dep / 2, GROUND, 2.2 * s, 0.4 * s, 1.6 * s, stone, tones.get(PAL.soil[1], haze))
+          box(len / 2, dep / 2, GROUND + 0.4 * s, 1.5 * s, 0.55 * s, 1.0 * s, tones.get(PAL.hedge[1], haze), tones.get(PAL.hedge[2], haze))
+        }
+        const bench = tones.get(PAL.wood[1], haze)
+        for (const c of [0.5 * s, dep - 0.5 * s]) for (const a of [len * 0.25, len * 0.75]) box(a, c, GROUND, 1.2 * s, 0.35 * s, 0.4 * s, bench)
+        break
+      }
+      case 'yard': {
+        flat(0, len, 0, dep, PATH_Y, tones.get(PAL.bgPave[0], haze, 0.95))
+        if (!near) break
+        // A container at one end, a few crates and pallets.
+        if (len > 6 * s && dep > 1.4 * s) {
+          const hex = PAL.bgAwning[Math.floor(p.v * PAL.bgAwning.length)]
+          box(len - 1.6 * s, dep / 2, GROUND, 2.6 * s, 1.1 * s, Math.min(1.0 * s, dep - 0.3 * s), tones.get(hex, haze, 0.85), tones.get(hex, haze))
+        }
+        const crate = tones.get(PAL.wood[1], haze)
+        for (let i = 0; i < 3; i++) {
+          if (rng() < 0.7) box((0.12 + 0.45 * rng()) * len, (0.3 + 0.4 * rng()) * dep, GROUND, 0.7 * s, (0.35 + 0.4 * rng()) * s, 0.6 * s, crate, tones.get(PAL.wood[2], haze))
+        }
+        break
+      }
+      case 'lot': {
+        flat(0, len, 0, dep, PATH_Y, tones.get(PAL.bgEarth[Math.floor(p.v * PAL.bgEarth.length)], haze))
+        if (!near) break
+        // Tufts of grass and a shrub.
+        const grass = tones.get(PAL.bgLawn[2], haze)
+        for (let i = 0; i < 5; i++) {
+          const a = (0.1 + 0.8 * rng()) * len
+          const c = (0.1 + 0.8 * rng()) * dep
+          flat(a - 0.35 * s, a + 0.35 * s, c - 0.25 * s, c + 0.25 * s, LINE_Y, grass)
+        }
+        box(len * (0.2 + 0.6 * p.v), dep * 0.5, GROUND, 0.9 * s, 0.6 * s, 0.8 * s, tones.get(PAL.hedge[1], haze), tones.get(PAL.hedge[2], haze))
+        break
+      }
     }
   }
 
@@ -483,9 +877,12 @@ export class Outskirts {
     return h.w >= 3.6 * s ? (side * h.w) / 3 : (side * h.w) / 4
   }
 
-  /** Window slots: front (each floor, skipping the door), then one centred on each free side wall. */
-  private windows(h: House, s: number): Array<{ face: 'front' | 'right' | 'left'; u: number; y: number; w: number; h: number }> {
-    const out: Array<{ face: 'front' | 'right' | 'left'; u: number; y: number; w: number; h: number }> = []
+  /**
+   * Window slots: front (each floor, skipping the door), back (one or two per floor: the camera orbits, so backs are seen
+   * as often as fronts), then one centred on each free side wall.
+   */
+  private windows(h: House, s: number): Slot[] {
+    const out: Slot[] = []
     const door = this.doorU(h, s)
     const wide = h.w >= 3.6 * s
     const us = wide ? [-h.w / 3, 0, h.w / 3] : [-h.w / 4, h.w / 4]
@@ -494,9 +891,13 @@ export class Outskirts {
     const yLow = GROUND + 1.45 * s
     const yHigh = GROUND + h.h - 1.05 * s
     for (const u of us) if (Math.abs(u - door) > 0.5 * s) out.push({ face: 'front', u, y: yLow, w: ww, h: wh })
-    if (h.storeys === 2) for (const u of wide ? [-h.w / 3, h.w / 3] : us) out.push({ face: 'front', u, y: yHigh, w: ww, h: wh })
+    for (let k = 0; k < h.storeys; k++) {
+      const y = h.storeys > 1 ? yLow + ((yHigh - yLow) * k) / (h.storeys - 1) : yLow
+      if (k > 0) for (const u of wide ? [-h.w / 3, h.w / 3] : us) out.push({ face: 'front', u, y, w: ww, h: wh })
+      for (const u of wide ? [-h.w / 4, h.w / 4] : [0]) out.push({ face: 'back', u, y, w: ww, h: wh })
+    }
     if (!h.attached) {
-      const y = h.storeys === 2 ? yHigh : yLow
+      const y = h.storeys > 1 ? yHigh : yLow
       out.push({ face: 'right', u: 0, y, w: 0.7 * s, h: wh }, { face: 'left', u: 0, y, w: 0.7 * s, h: wh })
     }
     return out
@@ -505,7 +906,16 @@ export class Outskirts {
   private tree(b: Batch, t: Tree, tones: Tones, haze: number): void {
     const s = t.s
     const y = GROUND
-    b.flat(t.x - 0.9 * s + SHADOW_DIR.x * 0.9 * s, t.z - 0.9 * s + SHADOW_DIR.z * 0.9 * s, t.x + 0.9 * s + SHADOW_DIR.x * 0.9 * s, t.z + 0.9 * s + SHADOW_DIR.z * 0.9 * s, SHADOW_Y, tones.get(PAL.bgLawn[0], haze, 0.62))
+    const r = (t.kind === 'column' ? 0.55 : 0.9) * s
+    b.flat(t.x - r + SHADOW_DIR.x * r, t.z - r + SHADOW_DIR.z * r, t.x + r + SHADOW_DIR.x * r, t.z + r + SHADOW_DIR.z * r, SHADOW_Y, tones.get(PAL.bgLawn[0], haze, 0.62))
+    if (t.kind === 'column') {
+      // Poplar: a tall narrow crown.
+      const [dk, mid, lt] = PAL.hedge.map((c) => tones.get(c, haze))
+      b.box(t.x, y, t.z, 0.26 * s, 0.6 * s, 0.26 * s, tones.get(PAL.trunk[0], haze))
+      b.box(t.x, y + 0.45 * s, t.z, 0.95 * s, 2.3 * s, 0.95 * s, dk, mid, 1, TREE_SWAY, y)
+      if (t.lod < 2) b.box(t.x, y + 2.75 * s, t.z, 0.6 * s, 0.5 * s, 0.6 * s, mid, lt, 1, TREE_SWAY, y)
+      return
+    }
     if (t.kind === 'cone') {
       const [dk, mid, lt] = PAL.pine.map((c) => tones.get(c, haze))
       b.box(t.x, y, t.z, 0.3 * s, 0.8 * s, 0.3 * s, tones.get(PAL.trunk[0], haze))
