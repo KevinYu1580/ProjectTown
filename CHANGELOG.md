@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Depth of field blurs by distance instead of by screen position: the town, its signs and its people stay sharp wherever they are on screen, the neighbourhood behind blurs more the farther away it is, things in front of the town blur only slightly, and the strongest blur is about a third weaker.
+
 ## [1.0.0] - 2026-10-27
 
 ### Added

@@ -306,6 +306,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.maxHeight = tallest
     this.rig.setTownBounds(this.layout.bounds, tallest)
     this.sky.setTownBounds(this.layout.bounds, tallest)
+    this.postfx.setTownBounds(this.layout.bounds, tallest)
   }
 
   private updateEmptyPatch(): void {
