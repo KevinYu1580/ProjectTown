@@ -26,8 +26,8 @@ public final class SessionStateDeriver {
 
     public init() {}
 
-    /// `alive` must already be filtered by process liveness. M4 hook state (waiting / lastStopAt) will
-    /// be passed in here and consulted in the waiting and finished rules.
+    /// `alive` must already be filtered by process liveness. No hook state is needed: Claude Code writes
+    /// `status: "waiting"` to the session file while it waits for the user, e.g. at a permission prompt.
     public func derive(_ alive: [SessionFile], nowMs: Int64, settings: DerivationSettings) -> [DerivedSession] {
         var next: [String: SessionState] = [:]
         let derived = alive.map { file -> DerivedSession in

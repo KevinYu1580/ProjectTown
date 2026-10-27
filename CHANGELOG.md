@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The "Needs you" state comes straight from Claude Code's session files, which set `status: "waiting"` while Claude waits for you (verified with Claude Code 2.1.308). No hooks are needed.
+
+### Removed
+
+- The disabled Claude hooks placeholder in the Status tab of Settings.
+
 ## [0.2.0] - 2026-10-27
 
 ### Added
