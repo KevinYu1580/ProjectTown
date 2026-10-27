@@ -77,6 +77,7 @@ export const PAL = {
   bgHay: [0xa3ab62, 0xb7bd74, 0xc8cc88],
   bgPasture: [0x7fa756, 0x8fb662],
   bgMeadow: [0x7ea458, 0x88ab5d],
+  bgWildflower: [0xf0ebdf, 0xe8c654, 0x9f8cc6, 0xd9796a, 0xe39ab1], // daisy, buttercup, clover, poppy, campion
   bgWoodFloor: 0x4f7344,
   // Hill contour tiers, low to high: a touch lighter and warmer with height.
   bgHill: [0x6f9a50, 0x79a256, 0x84aa5c, 0x8fb263, 0x9bba6b, 0xa7c274, 0xb2c97d],

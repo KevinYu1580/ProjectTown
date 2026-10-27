@@ -1,8 +1,9 @@
 // The countryside around the town ("outskirts") as plain data, so placement can be tested. The town stands on a low
-// terrace (its verge garden and a picket fence with gates); below it lie patchwork fields cut by a winding
-// river with two bridges, a railway with a tunnel at each end, dirt lanes from the gates to a few farms, windmills,
-// woods and a pond, and a ring of hills toward the plate edge. It reaches past the frame edges of the default view at
-// every orbit angle and is deterministic for a layout and seed.
+// terrace (its verge garden and a picket fence with gates). Close below it lie meadows with wildflowers and trees,
+// fenced pastures, groves, a pond and two cottages by the lanes; further out a patchwork of crop fields cut by a winding
+// river with two bridges, a railway with a tunnel at each end, dirt lanes from the gates to a few farms, windmills and
+// woods, and a ring of hills toward the plate edge. It reaches past the frame edges of the default view at every orbit
+// angle and is deterministic for a layout and seed.
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../cameraMath'
@@ -14,14 +15,14 @@ const DEG = Math.PI / 180
 export const MAX_STYLE_HEIGHT = 19
 /** Widest viewport whose default view must be filled (16:10 and 3:2 are narrower, so they see less). */
 export const WIDEST_ASPECT = 16 / 9
-/** The town's terrace reaches this far past its bounds: the verge garden, then a strip of lawn and a fence on its edge. */
-export const TERRACE_W = VERGE_W + 3.6
+/** The town's terrace reaches this far past its bounds: the verge garden, then the fence just past it. */
+export const TERRACE_W = VERGE_W + 1
 /** Top of the countryside ground (the plate). */
 export const COUNTRY_Y = -0.5
 /** Top of the terrace grass (the street's verge and town trees stand on it); the town's paving is at about 0. */
 export const TERRACE_Y = -0.05
 /** Grass kept clear around the terrace. */
-export const CLEAR = 3
+export const CLEAR = 1
 const LANE_W = 3.2 // dirt lane width at lot scale >= 0.8
 export const RAMP = 5 // a lane slopes down from the terrace over this length
 export const BANK = 1.1 // sand bank on each side of the river
@@ -47,13 +48,13 @@ export type Facing = 'x+' | 'x-' | 'z+' | 'z-'
 export type Lod = 0 | 1 | 2
 export type Crop =
   | 'wheat' | 'barley' | 'rapeseed' | 'lavender' | 'sunflower' | 'tulips' | 'vegetables' | 'ploughed'
-  | 'hay' | 'pasture' | 'orchard' | 'wood' | 'pond' | 'meadow'
+  | 'hay' | 'pasture' | 'orchard' | 'wood' | 'pond' | 'meadow' | 'wildflowers'
 export type TreeKind = 'round' | 'cone' | 'fruit' | 'poplar' | 'willow'
 
 /** Height of a field above the countryside ground, per crop (woods stand on the ground itself). */
 export const FIELD_H: Record<Crop, number> = {
   wheat: 0.24, barley: 0.22, rapeseed: 0.24, lavender: 0.18, sunflower: 0.18, tulips: 0.16, vegetables: 0.14,
-  ploughed: 0.1, hay: 0.16, pasture: 0.14, orchard: 0.12, wood: 0, pond: 0.1, meadow: 0.05,
+  ploughed: 0.1, hay: 0.16, pasture: 0.14, orchard: 0.12, wood: 0, pond: 0.1, meadow: 0.05, wildflowers: 0.07,
 }
 
 /** A patch of the patchwork; rows run along X when `alongX`. */
@@ -72,6 +73,8 @@ export interface Rail { z: number; x0: number; x1: number; half: number }
 export interface Train { z: number; x0: number; x1: number; len: number; speed: number; period: number; phase: number; scale: number }
 /** Farmyard; its entrance faces `facing`. */
 export interface Farm extends Rect { facing: Facing; v: number; silo: boolean; lights: number }
+/** Cottage with its kitchen garden, by a lane near the town; its front faces `facing` (the lane). */
+export interface Cottage extends Rect { facing: Facing; v: number }
 /** Windmill on a low mound; sails turn at `speed` rad/s from `phase`, facing the default camera. */
 export interface Windmill { x: number; z: number; s: number; mound: number; phase: number; speed: number }
 /** Stepped hill: `levels` contour tiers shrinking from radius `r`. */
@@ -104,6 +107,7 @@ export interface OutskirtsPlan {
   hedges: Rect[]
   ponds: Pond[]
   farms: Farm[]
+  cottages: Cottage[]
   windmills: Windmill[]
   hills: Hill[]
   trees: Tree[]
@@ -242,6 +246,7 @@ const smooth = (lo: number, hi: number, v: number): number => {
   return k * k * (3 - 2 * k)
 }
 const centre = (r: Rect): { x: number; z: number } => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2 })
+const distTo = (r: Rect, x: number, z: number): number => Math.hypot(Math.max(r.x0 - x, 0, x - r.x1), Math.max(r.z0 - z, 0, z - r.z1))
 const lodOf = (d: number, reach: number): Lod => (d < 0.5 * reach ? 0 : d < 0.8 * reach ? 1 : 2)
 const square = (x: number, z: number, h: number): Rect => ({ x0: x - h, x1: x + h, z0: z - h, z1: z + h })
 
@@ -288,7 +293,12 @@ function split(r: Rect, maxAt: (r: Rect) => number, rng: () => number, out: Rect
   }
 }
 
-const CROPS: Crop[] = ['wheat', 'barley', 'rapeseed', 'lavender', 'sunflower', 'tulips', 'vegetables', 'ploughed', 'hay', 'pasture', 'orchard', 'wood']
+const CROPS: Crop[] = ['wheat', 'barley', 'rapeseed', 'lavender', 'sunflower', 'tulips', 'vegetables', 'ploughed', 'hay', 'pasture', 'orchard', 'wood', 'wildflowers']
+// Crop weights close round the town: meadows and pastures with groves and orchards, hardly any crops.
+const NEAR_TOWN: Record<string, number> = {
+  wheat: 0.5, barley: 0.3, rapeseed: 0.3, lavender: 0.3, sunflower: 0.3, tulips: 0.3, vegetables: 1, ploughed: 0.3, hay: 6,
+  pasture: 26, orchard: 4, wood: 2, wildflowers: 30,
+}
 
 export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: boolean }): OutskirtsPlan {
   const { cols, rows, pitch, lotScale: s, bounds: b } = layout
@@ -378,7 +388,11 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     windmills.push({ x, z, s: Math.max(s, 0.75), mound, phase: rng() * Math.PI * 2, speed: 0.32 + 0.1 * rng() })
   }
   mill(t.x0 - CLEAR - 7.5, t.z1 - 0.15 * depth, 6)
-  mill(-0.42 * reach, Math.min(-0.45 * reach, zr - railHalf - RAIL_CLEAR - 13), 8)
+  // Beyond the railway, with room for a field between the track and its mound or none: never a strip too thin to sow.
+  const railEdge = zr - railHalf - RAIL_CLEAR
+  const zm = Math.min(-0.45 * reach, railEdge - 13)
+  const sliver = railEdge - (zm + 8 + 2)
+  mill(-0.42 * reach, sliver > 0 && sliver < MIN_PIECE + GAP + 0.5 ? zm - (MIN_PIECE + GAP + 0.5 - sliver) : zm, 8)
 
   // Fields: the plate minus the town, the railway, lanes, farms and windmill mounds, split into a patchwork that grows
   // coarser with distance, then trimmed to the river banks. Past the hill line they are plain meadow under the hills.
@@ -412,7 +426,7 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
 
   // A pond in a field west of the town, orchards to its south-east.
   const ponds: Pond[] = []
-  const pondField = nearest(plots, t.x0 - 0.12 * reach, t.z0 + 0.25 * depth, (f) => f.x1 - f.x0 >= 15 && f.z1 - f.z0 >= 12 && f.crop !== 'meadow' && !overlaps(f, riverBand(river, f, BANK + RIPARIAN)))
+  const pondField = nearest(plots, t.x0 - 0.06 * reach, t.z0 + 0.25 * depth, (f) => f.x1 - f.x0 >= 13 && f.z1 - f.z0 >= 11 && f.crop !== 'meadow' && !overlaps(f, riverBand(river, f, BANK + RIPARIAN)))
   if (pondField) {
     pondField.crop = 'pond'
     const c = centre(pondField)
@@ -421,6 +435,27 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
   for (let i = 0; i < 2; i++) {
     const f = nearest(plots, t.x1 - 0.25 * (t.x1 - t.x0), t.z1 + 0.14 * reach, (q) => q.crop !== 'meadow' && q.crop !== 'pond' && q.crop !== 'orchard' && (q.x1 - q.x0) * (q.z1 - q.z0) >= 120)
     if (f) f.crop = 'orchard'
+  }
+  // Two cottages with kitchen gardens just past the ramps, by the west and the south lane: each in the corner of a field
+  // that borders its lane, nearest the town (the rest of that field is plain grass).
+  const cottages: Cottage[] = []
+  const cw = 12 * s // along the lane
+  const cd = 10 * s
+  const by = laneW / 2 + 1.4 + GAP / 2 + 0.3 // a field this close to a lane's centreline borders it
+  const fits = (f: Field): boolean => f.crop !== 'pond' && f.crop !== 'meadow' && Math.min(f.x1 - f.x0, f.z1 - f.z0) >= 7 * s
+  const west = nearest(plots, t.x0 - RAMP, zw, (f) => fits(f) && f.x1 <= t.x0 && f.x1 > t.x0 - lw && (Math.abs(f.z1 - zw) < by || Math.abs(f.z0 - zw) < by))
+  if (west) {
+    west.crop = 'meadow'
+    const northOfLane = Math.abs(west.z1 - zw) < by
+    const z0 = northOfLane ? Math.max(west.z0, west.z1 - cd) : west.z0
+    cottages.push({ x0: Math.max(west.x0, west.x1 - cw), x1: west.x1, z0, z1: northOfLane ? west.z1 : Math.min(west.z1, z0 + cd), facing: northOfLane ? 'z+' : 'z-', v: rng() })
+  }
+  const south = nearest(plots, xs, t.z1 + RAMP, (f) => fits(f) && f.z0 >= t.z1 && f.z0 < t.z1 + ls && (Math.abs(f.x0 - xs) < by || Math.abs(f.x1 - xs) < by))
+  if (south) {
+    south.crop = 'meadow'
+    const eastOfLane = Math.abs(south.x0 - xs) < by
+    const x0 = eastOfLane ? south.x0 : Math.max(south.x0, south.x1 - cd)
+    cottages.push({ x0, x1: eastOfLane ? Math.min(south.x1, x0 + cd) : south.x1, z0: south.z0, z1: Math.min(south.z1, south.z0 + cw), facing: eastOfLane ? 'x-' : 'x+', v: rng() })
   }
 
   // Trim to the river: fields across it become strips on either bank, each cut to the bank.
@@ -453,25 +488,6 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     trees.push({ x, y, z, s: sc, kind, v: rng(), lod: lodOf(Math.hypot(x, z), reach) })
   }
   const clearOf = (r: Rect): boolean => !blocks.some((o) => overlaps(r, o)) && !overlaps(r, riverBand(river, r, BANK + 0.4))
-
-  // The terrace edge carried an avenue of trees here until it got its fence (pastoral.ts). Draw what the avenue drew
-  // from the random stream, so everything placed after it keeps its place and look.
-  const av = TERRACE_W - 1.9
-  const avenue = (x: number, z: number): void => {
-    const atGate = gates.some((g) => (g.axis === 'x' ? Math.abs(z - g.z) < 4.6 && Math.abs(x - g.x) < 3 : Math.abs(x - g.x) < 4.6 && Math.abs(z - g.z) < 3))
-    if (!atGate && rng() >= 0.12) {
-      rng()
-      rng()
-    }
-  }
-  const ax0 = b.minX - av
-  const az0 = b.minZ - av
-  const aw = b.maxX - b.minX + 2 * av
-  const ad = b.maxZ - b.minZ + 2 * av
-  const nx = Math.round(aw / 5.6)
-  const nz = Math.round(ad / 5.6)
-  for (let i = 0; i <= nx; i++) for (const z of [az0, az0 + ad]) avenue(ax0 + (aw * i) / nx, z)
-  for (let i = 1; i < nz; i++) for (const x of [ax0, ax0 + aw]) avenue(x, az0 + (ad * i) / nz)
 
   // Field furniture: orchards, woods, the pond's trees, grazing animals, hay bales, and hedgerows on some edges.
   for (const f of fields) {
@@ -507,17 +523,29 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
         const facing = (['x+', 'x-', 'z+', 'z-'] as const)[Math.floor(fr() * 4)]
         animals.push({ x: f.x0 + 2 + fr() * (w - 4), y, z: f.z0 + 2 + fr() * (d - 4), kind: cows ? 'cow' : 'sheep', facing, s })
       }
-      if (w > 9 && d > 9 && fr() < 0.6) tree(f.x0 + 2.5 + fr() * (w - 5), y, f.z0 + 2.5 + fr() * (d - 5), s * (1.1 + 0.3 * fr()), 'round')
+      // Shade trees, more in big pastures.
+      for (let i = w > 9 && d > 9 ? Math.round(clamp((w * d) / 260, 0.6, 3) + fr() - 0.5) : 0; i > 0; i--) {
+        tree(f.x0 + 2.5 + fr() * (w - 5), y, f.z0 + 2.5 + fr() * (d - 5), s * (1.1 + 0.3 * fr()), 'round')
+      }
     } else if (f.crop === 'hay') {
       const n = Math.round(clamp((w * d) / 90, 2, 7))
       for (let i = 0; i < n && w > 5 && d > 5; i++) bales.push({ x: f.x0 + 2 + fr() * (w - 4), y, z: f.z0 + 2 + fr() * (d - 4), s })
+    } else if (f.crop === 'wildflowers' && w > 6 && d > 6) {
+      // Scattered trees, and in a big meadow a small grove.
+      for (let i = Math.round(clamp((w * d) / 160, 1, 5)); i > 0; i--) tree(f.x0 + 2 + fr() * (w - 4), y, f.z0 + 2 + fr() * (d - 4), s * (1 + 0.3 * fr()), fr() < 0.25 ? 'fruit' : 'round')
+      if (w > 12 && d > 12 && fr() < 0.4 + (w * d) / 1500) {
+        const gx = f.x0 + 4 + fr() * (w - 8)
+        const gz = f.z0 + 4 + fr() * (d - 8)
+        for (let i = 4 + Math.floor(fr() * 3); i > 0; i--) tree(gx + (fr() - 0.5) * 6, y, gz + (fr() - 0.5) * 6, s * (0.95 + 0.4 * fr()), fr() < 0.4 ? 'cone' : 'round')
+      }
     }
-    // Hedgerows on the north and west edges of some fields, with a tree now and then.
+    // Hedgerows on the north and west edges of some fields (most of them round the town), with a tree now and then.
     if (f.crop === 'meadow' || f.crop === 'wood') continue
     const north = { x0: f.x0, x1: f.x1, z0: f.z0 - GAP / 2 - 0.35, z1: f.z0 - GAP / 2 + 0.35 }
     const west = { x0: f.x0 - GAP / 2 - 0.35, x1: f.x0 - GAP / 2 + 0.35, z0: f.z0, z1: f.z1 }
+    const hedged = distTo(t, (f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2) < 0.2 * reach ? 0.75 : 0.5
     for (const h of inner.has(f) ? [west] : [north, west]) {
-      if (fr() > 0.5 || !clearOf(h)) continue
+      if (fr() > hedged || !clearOf(h)) continue
       hedges.push(h)
       const alongX = h.x1 - h.x0 > h.z1 - h.z0
       const l = alongX ? h.x1 - h.x0 : h.z1 - h.z0
@@ -643,6 +671,7 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     hedges: lite ? [] : hedges,
     ponds,
     farms,
+    cottages,
     windmills,
     hills,
     trees: lite ? byNear(trees, LITE_CAP.trees).map((tr) => ({ ...tr, lod: 2 as const })) : byNear(trees, CAP.trees),
@@ -693,11 +722,12 @@ function nearest<T extends Rect>(list: T[], x: number, z: number, ok: (f: T) => 
 }
 
 /**
- * Crops by place: flowers and grain around the near windmill, pasture, hay and vegetables by the farms, woods and
- * pasture toward the hills; neighbouring fields avoid the same crop.
+ * Crops by place: meadows, pastures, groves and orchards close round the town (the band the default view shows), flowers
+ * and grain around the near windmill, pasture, hay and vegetables by the farms, woods and pasture toward the hills;
+ * neighbouring fields avoid the same crop.
  */
 function assignCrops(fields: Field[], ctx: { t: Rect; reach: number; windmill: Windmill; farms: Farm[]; rng: () => number }): void {
-  const { reach, windmill, farms, rng } = ctx
+  const { t, reach, windmill, farms, rng } = ctx
   const order = fields.filter((f) => f.crop !== 'meadow').sort((a, c) => a.z0 - c.z0 || a.x0 - c.x0)
   const done = new Set<Field>()
   for (const f of order) {
@@ -708,17 +738,19 @@ function assignCrops(fields: Field[], ctx: { t: Rect; reach: number; windmill: W
     const far = smooth(0.45 * reach, 0.85 * reach, d)
     const w: Record<string, number> = {
       wheat: 18, barley: 6, rapeseed: 6, lavender: 4, sunflower: 5, tulips: 3, vegetables: 12, ploughed: 7,
-      hay: 7, pasture: 12, orchard: 4, wood: 5 + 14 * far,
+      hay: 7, pasture: 12, orchard: 4, wood: 5 + 14 * far, wildflowers: 2,
     }
     if (nearMill) Object.assign(w, { lavender: 16, tulips: 12, wheat: 26, sunflower: 9 })
     if (nearFarm) Object.assign(w, { pasture: 22, hay: 16, vegetables: 16 })
     if (far > 0.5) Object.assign(w, { lavender: 1, tulips: 1, sunflower: 2, pasture: 14 })
+    const town = 1 - smooth(0.12 * reach, 0.28 * reach, distTo(t, c.x, c.z))
+    for (const cr of CROPS) w[cr] += (NEAR_TOWN[cr] - w[cr]) * town
     const near = order.filter((o) => done.has(o) && overlaps(o, f, GAP + 0.6)).map((o) => o.crop)
     let crop: Crop = 'wheat'
     for (let tries = 0; tries < 4; tries++) {
       let roll = rng() * CROPS.reduce((a, cr) => a + w[cr], 0)
       crop = CROPS.find((cr) => (roll -= w[cr]) < 0) ?? 'wheat'
-      if (!near.includes(crop)) break
+      if (!near.includes(crop) || town > 0.5) break // meadows and pastures round the town may border their own kind
     }
     f.crop = crop
     done.add(f)

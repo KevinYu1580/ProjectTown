@@ -82,7 +82,7 @@ describe('planOutskirts', () => {
       const p = plan(n)
       // Everything that counts as landscape, bucketed on a 20 m grid so the nearest piece is quick to find.
       const pieces: Rect[] = [
-        p.terrace, ...p.fields, ...p.lanes, ...p.bridges, ...p.farms, ...p.tunnels, ...p.hedges, ballast(p),
+        p.terrace, ...p.fields, ...p.lanes, ...p.bridges, ...p.farms, ...p.cottages, ...p.tunnels, ...p.hedges, ballast(p),
         ...p.hills.map(footprint), ...p.windmills.map(mound), ...p.trees.map((t) => square(t.x, t.z, 1)),
       ]
       const cell = 20
@@ -134,11 +134,16 @@ describe('planOutskirts', () => {
           if (overlaps(f, riverBand(p, f))) bad.push(`${at} / river`)
           for (let j = i + 1; j < p.fields.length; j++) if (overlaps(f, p.fields[j], -1e-6)) bad.push(`${at} / field ${j}`)
         })
-        // Farms and windmill mounds keep clear of the water, the railway, the town and each other.
-        const sites: Array<[string, Rect]> = [...p.farms.map((r): [string, Rect] => ['farm', r]), ...p.windmills.map((w): [string, Rect] => ['mill', mound(w)])]
+        // Farms, cottages and windmill mounds keep clear of the water, the railway, the town, the lanes and each other.
+        const sites: Array<[string, Rect]> = [
+          ...p.farms.map((r): [string, Rect] => ['farm', r]), ...p.cottages.map((r): [string, Rect] => ['cottage', r]),
+          ...p.windmills.map((w): [string, Rect] => ['mill', mound(w)]),
+        ]
         sites.forEach(([name, r], i) => {
           if (overlaps(r, riverBand(p, r, BANK + 2))) bad.push(`${name} / river`)
           if (overlaps(r, rail) || overlaps(r, town(p))) bad.push(`${name} / rail or town`)
+          if ([...p.lanes, ...p.bridges].some((l) => overlaps(r, l))) bad.push(`${name} / lane`)
+          if (name === 'cottage' && !p.fields.some((f) => f.crop === 'meadow' && r.x0 >= f.x0 && r.x1 <= f.x1 && r.z0 >= f.z0 && r.z1 <= f.z1)) bad.push('cottage outside its field')
           for (const [other, o] of sites.slice(i + 1)) if (overlaps(r, o)) bad.push(`${name} / ${other}`)
         })
         expect(bad, `n=${n} lite=${lite}`).toEqual([])
@@ -260,6 +265,7 @@ describe('planOutskirts', () => {
         expect(g.axis === 'x' ? [p.terrace.x0, p.terrace.x1] : [p.terrace.z0, p.terrace.z1]).toContain(g.axis === 'x' ? g.x : g.z)
       }
       expect(p.farms).toHaveLength(3)
+      expect(p.cottages).toHaveLength(2)
       expect(p.windmills).toHaveLength(2)
       expect(p.ponds).toHaveLength(1)
       expect(p.hills.length).toBeGreaterThan(20)
@@ -267,6 +273,27 @@ describe('planOutskirts', () => {
     }
     expect(plan(25).plate.x1).toBeGreaterThan(plan(1).plate.x1)
     expect(plan(25).fields.length).toBeGreaterThan(plan(1).fields.length)
+  })
+
+  it('keeps the land close round the town mostly meadow and pasture, the crop fields further out', () => {
+    const soft = new Set(['pasture', 'wildflowers', 'orchard', 'wood', 'pond', 'hay', 'meadow'])
+    for (const n of COUNTS) {
+      const p = plan(n)
+      const share = (lo: number, hi: number): number => {
+        let all = 0
+        let meadow = 0
+        for (const f of p.fields) {
+          const d = distTo(p.terrace, (f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2)
+          if (d < lo * p.reach || d >= hi * p.reach) continue
+          const a = (f.x1 - f.x0) * (f.z1 - f.z0)
+          all += a
+          if (soft.has(f.crop)) meadow += a
+        }
+        return meadow / all
+      }
+      expect(share(0, 0.12), `n=${n}`).toBeGreaterThan(0.8)
+      expect(share(0.3, 0.5), `n=${n}`).toBeLessThan(0.65)
+    }
   })
 
   it('respects the caps, and the lite plan is the flat, sparse version of the same land', () => {
