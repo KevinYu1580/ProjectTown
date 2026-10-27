@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Settings window with Projects, Appearance, Status and General tabs: add, remove, reorder and edit projects, scene appearance, status thresholds, display selection and launch at login.
+- Adjust View: set the town camera on the wallpaper from the menu bar or the Appearance tab; the view is saved to the config.
+- Settings are validated before they are saved; invalid values are rejected with a message next to the control.
+
+### Changed
+
+- The menu bar Settings item opens the settings window instead of `config.json`, and Adjust View is enabled.
+
 ## [0.1.0] - 2026-10-27
 
 ### Added

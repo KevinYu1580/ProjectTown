@@ -6,13 +6,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private static let repositoryURL = URL(string: "https://github.com/KevinYu1580/ProjectTown")!
 
     private let wallpaper: WallpaperWindowController
-    private let configURL: URL
+    private let openSettingsWindow: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let pauseItem = NSMenuItem()
 
-    init(wallpaper: WallpaperWindowController, configURL: URL) {
+    init(wallpaper: WallpaperWindowController, showSettings: @escaping () -> Void) {
         self.wallpaper = wallpaper
-        self.configURL = configURL
+        self.openSettingsWindow = showSettings
         super.init()
 
         if let button = statusItem.button {
@@ -24,11 +24,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.delegate = self
-        // M3 replaces this with the settings window; for now it opens config.json in the default editor.
         menu.addItem(item(String(localized: "Open Settings…"), #selector(openSettings), key: ","))
-        let adjust = item(String(localized: "Adjust View"), nil)
-        adjust.isEnabled = false
-        menu.addItem(adjust)
+        menu.addItem(item(String(localized: "Adjust View"), #selector(adjustView)))
         pauseItem.target = self
         pauseItem.action = #selector(togglePause)
         menu.addItem(pauseItem)
@@ -59,7 +56,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        NSWorkspace.shared.open(configURL)
+        openSettingsWindow()
+    }
+
+    @objc private func adjustView() {
+        wallpaper.enterCameraEdit()
     }
 
     @objc private func togglePause() {
