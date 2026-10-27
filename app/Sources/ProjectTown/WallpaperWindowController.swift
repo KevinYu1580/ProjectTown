@@ -32,7 +32,8 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     private let webView: WKWebView
     private var displayUUID: String?
     private let cycleEpochMs: Int64
-    private let locale = SceneLocale.resolve(preferredLanguages: Locale.preferredLanguages)
+    /// Same language the bundle picked for the Swift UI, so the scene and the app UI always agree.
+    private let locale = SceneLocale.resolve(preferredLanguages: Bundle.main.preferredLocalizations)
 
     // Latest values kept until the scene reports `ready`; only the newest of each is ever sent.
     private var ready = false
@@ -159,11 +160,13 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     // MARK: Loading and bridge
 
     private func loadScene() {
+        #if DEBUG  // Release builds only ever load the bundled scene (HANDOFF §11: no network connections).
         if let raw = ProcessInfo.processInfo.environment["PROJECTTOWN_WEB_URL"], let url = URL(string: raw) {
             Self.log.notice("Loading dev URL \(raw, privacy: .public)")
             webView.load(URLRequest(url: url))
             return
         }
+        #endif
         guard let directory = Bundle.main.resourceURL?.appendingPathComponent("web", isDirectory: true) else {
             Self.log.error("Bundle has no resources directory")
             return

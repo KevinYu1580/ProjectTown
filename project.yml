@@ -2,11 +2,13 @@ name: ProjectTown
 options:
   deploymentTarget:
     macOS: "14.0"
+  developmentLanguage: en
 settings:
   base:
     MARKETING_VERSION: 0.3.0
     CURRENT_PROJECT_VERSION: 3
     SWIFT_VERSION: "6.0"
+    SWIFT_EMIT_LOC_STRINGS: YES
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
@@ -19,6 +21,7 @@ targets:
     platform: macOS
     sources:
       - app/Sources/ProjectTown
+      - app/Resources/Localizable.xcstrings
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.kevinyu1580.ProjectTown
@@ -30,6 +33,7 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true
         CFBundleDisplayName: ProjectTown
+        CFBundleLocalizations: [en, zh-Hant]
         LSMinimumSystemVersion: "14.0"
     postCompileScripts:
       - name: Copy web/dist into Resources/web

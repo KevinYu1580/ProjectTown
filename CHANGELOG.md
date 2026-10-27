@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Traditional Chinese and English for the menu bar, settings window and messages, following the system language (Simplified Chinese and other languages show English). The wallpaper scene always uses the same language as the app.
+
+### Changed
+
+- The `PROJECTTOWN_WEB_URL` development override only works in Debug builds, so Release builds can only load the bundled scene.
+
 ## [0.3.0] - 2026-10-27
 
 ### Changed

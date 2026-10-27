@@ -4,8 +4,9 @@ public enum SceneLocale: String, Codable, Sendable {
     case zhHant = "zh-Hant"
     case en
 
-    /// The first preferred language decides: Traditional Chinese variants map to `.zhHant`, everything else
-    /// (including zh-Hans) to `.en`.
+    /// The first language decides: Traditional Chinese variants map to `.zhHant`, everything else
+    /// (including zh-Hans) to `.en`. The app passes `Bundle.main.preferredLocalizations`, i.e. the language the
+    /// bundle already chose for the Swift UI (the first system language the app has a localization for).
     public static func resolve(preferredLanguages: [String]) -> SceneLocale {
         guard let first = preferredLanguages.first?.lowercased() else { return .en }
         let traditional = ["zh-hant", "zh-tw", "zh-hk", "zh-mo"]
