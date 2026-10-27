@@ -45,19 +45,44 @@ export const PAL = {
   lamp: 0xffc56b,
   firefly: 0xe6f59a,
 
-  // Background neighbourhood (outskirts): desaturated and calmer than the town, never an accent, so it reads as
-  // scenery behind the projects.
-  bgWall: [0xe0d9cb, 0xdcd0b9, 0xcdd3c3, 0xc9d0d4, 0xdbcac0, 0xd5c8ae, 0xd1cec4, 0xdfd4b6],
-  bgRoof: [0x9a7163, 0x6f7887, 0x7b8971, 0x8e7a68, 0x626873, 0x6f8786],
-  bgLawn: [0x7fa25e, 0x88a964, 0x799b5a, 0x8aa86a],
-  bgLane: 0x666a71, // residential lanes: lighter than the town's asphalt
-  bgKerb: 0xb2ada2,
-  bgPlinth: 0x9d978c,
+  // Countryside around the town (outskirts): warm and calm, a little softer than the town and never an accent, so it
+  // reads as scenery behind the projects.
+  bgStone: [0x9a907f, 0xb8ae9b, 0xd3cab7], // terrace wall, gate pillars, bridges, tunnel portals
+  bgDirt: [0x9a8163, 0xb39a76, 0xc7b18e], // lanes and farmyards
+  bgSand: [0xb9a988, 0xcbbd9c], // river banks
+  bgBallast: [0x7b746b, 0x928a7e],
+  bgSleeper: 0x5b4a3d,
+  bgRail: 0xaab1b8,
+  bgGirder: [0x4b5651, 0x67716b],
+  bgWheat: [0xbf9443, 0xd5ad56, 0xe5c574],
+  bgBarley: [0xb9ad6c, 0xccc283, 0xdcd39c],
+  bgRapeseed: [0xc4ad3a, 0xdcc64c, 0xebda6c],
+  bgLavender: [0x7b7092, 0x938aa9, 0xada5bf],
+  bgSage: [0x86956f, 0x97a57f],
+  bgTulips: [0xc96d61, 0xd9a3ad, 0xdcc672, 0xe6dfd1],
+  bgSunflower: [0x6a8a44, 0xe1b947],
+  bgVeg: [0x6c984b, 0x8ab35a, 0x5d8869, 0xa1c069],
+  bgSoil: [0x725540, 0x87674c, 0x9d7c5d],
+  bgHay: [0xa3ab62, 0xb7bd74, 0xc8cc88],
+  bgPasture: [0x7fa756, 0x8fb662],
+  bgMeadow: [0x7ea458, 0x88ab5d],
+  bgWoodFloor: 0x4f7344,
+  // Hill contour tiers, low to high: a touch lighter and warmer with height.
+  bgHill: [0x6f9a50, 0x79a256, 0x84aa5c, 0x8fb263, 0x9bba6b, 0xa7c274, 0xb2c97d],
+  bgFarmWall: [0xe4dac8, 0xdccdb1, 0xe0d4bf],
+  bgBarn: [0x95453a, 0xa75343],
+  bgTrim: 0xe6e0d3,
+  bgRoof: [0x6f5a50, 0x5d636b, 0x7f6553],
+  bgSilo: [0xadb3b7, 0xc8ccce],
+  bgMill: [0xe8e3d6, 0x5b4a3e], // tower, cap
+  bgSail: [0x6c4a34, 0xece5d6], // spars, cloth
+  bgWool: [0xece8de, 0x3b3430], // fleece, faces and legs
+  bgCow: [0xece8de, 0x3b3430, 0x8a5a3c],
+  bgTrain: [0x3d6e5b, 0x8e4d3c, 0xeadfc6, 0x5b6172, 0x2a2d33], // locomotive, coaches, window band, roofs, chassis
+  bgTractor: [0xbf5a42, 0x5b8a3d, 0x4a72a0],
   bgDoor: 0x6c5c50,
   bgGlass: 0x6f7d8b,
   bgChimney: 0x977367,
-  bgPath: 0xc9c1b2,
-  bgCar: [0xdcd7cc, 0x8f9ba7, 0xb4806f, 0x7f8e7d, 0xcfbf8e, 0x6d737f, 0x9fb2b6, 0xc2aa9b],
   bgGlow: 0xffc27c, // lit window at night: warm, dimmer than the town's windows
 } as const
 

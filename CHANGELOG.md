@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The houses around the town are replaced by open countryside: the town now stands on a low walled terrace with an avenue of trees and gated roads, surrounded by patchwork fields, a winding river with a stone bridge and a rail bridge, a small train that passes through tunnels now and then, windmills, three farms, orchards, a pond, grazing sheep and cows, tractors by day and a ring of hills toward the edge. At night the countryside goes dark and quiet with only a few warm farm windows, gate lanterns, the passing train and fireflies over the water.
+
 ## [1.0.0] - 2026-10-27
 
 ### Added

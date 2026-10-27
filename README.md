@@ -24,7 +24,7 @@ When a session ends, its person walks out to the road and off the map.
 
 **The town**
 
-- A quiet neighbourhood of small houses, gardens and cars driving the lanes surrounds the town, so the whole desktop is filled at any camera angle. It never has signs or people, so it is never mistaken for your projects.
+- The town stands on a low walled terrace in open countryside: patchwork fields, a river with two bridges, a small train that passes now and then, windmills, a few farms and hills all around, so the whole desktop is filled at any camera angle. Nothing out there has a sign or a person, so it is never mistaken for your projects.
 - Ten building styles (office, factory, café, bookstore, lab, warehouse, radio tower, greenhouse, clock tower, ramen shop), picked automatically or chosen per project, with your project color as an accent.
 - A glowing sign above each building with the project name and per-state counts, plus "+N" when more people are inside than fit on screen.
 - A HUD panel in the bottom-left corner with the session counts of every project. You can turn it off.

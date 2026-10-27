@@ -289,11 +289,11 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
 
   private applyLayout(layout: TownLayout): void {
     this.layout = layout
-    // The background neighbourhood fills the view around the town; its plan also sizes the street's base plate.
+    // The countryside fills the view around the town; its plan also sizes the plate and places the town's gates.
     const outskirts = planOutskirts(layout, { seed: this.seed, lite: this.lite })
     this.street.build(layout, outskirts)
     this.outskirts.build(outskirts)
-    this.ambient.build(layout)
+    this.ambient.build(layout, outskirts.glows)
     this.maxHeight = -1
     this.refit()
     this.updateEmptyPatch()

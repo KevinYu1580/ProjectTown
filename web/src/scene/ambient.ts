@@ -14,7 +14,7 @@ const T0 = 23.7 // seconds; the frame a frozen scene shows
 const BIRDS = 7
 const BIRD_ALT = 9.5 // the flight circle stays outside the town, so only trees are below
 const MAX_BUTTERFLIES = 24
-const MAX_FIREFLIES = 110
+const MAX_FIREFLIES = 170
 // Lot-local spots (before lot scaling) where butterflies and fireflies gather: the right-hand flower bed and the
 // front corner planters face the default camera; the back garden comes last.
 const GARDEN: Array<[number, number]> = [[5.7, -1.9], [6.1, 5.4], [-5.9, 5.6], [2.6, -5.5]]
@@ -73,8 +73,11 @@ export class Ambient {
     parent.add(this.root)
   }
 
-  /** Flight circle, garden spots and firefly spots for the current town (deterministic per layout). */
-  build(layout: TownLayout): void {
+  /**
+   * Flight circle, garden spots and firefly spots for the current town (deterministic per layout); `waterside` adds
+   * firefly spots over the river and ponds.
+   */
+  build(layout: TownLayout, waterside: Array<{ x: number; z: number }> = []): void {
     const { bounds, lots, lotScale } = layout
     const sx = bounds.maxX - bounds.minX
     const sz = bounds.maxZ - bounds.minZ
@@ -83,13 +86,14 @@ export class Ambient {
     const spots = lots.flatMap((l) => GARDEN.map(([x, z]) => ({ x: l.x + x * lotScale, z: l.z + z * lotScale, p: rng() * 100 })))
     // Two butterflies per lot (the most visible garden spots first), one per lot in large towns.
     this.flutters = lots.length <= MAX_BUTTERFLIES / 2 ? spots.filter((_, i) => i % 4 < 2) : spots.filter((_, i) => i % 4 === 0).slice(0, MAX_BUTTERFLIES)
-    // Fireflies: around every garden spot, plus a ring along the verge.
+    // Fireflies: around every garden spot, over the water nearby, plus a ring along the verge.
     const ring = Array.from({ length: 30 }, () => {
       const a = rng() * Math.PI * 2
       const k = 0.5 + 0.06 * rng()
       return { x: this.flock.x + Math.cos(a) * (sx * k + 4), z: this.flock.z + Math.sin(a) * (sz * k + 4), p: rng() * 100 }
     })
-    this.glows = [...spots, ...ring].slice(0, MAX_FIREFLIES)
+    const water = waterside.slice(0, 50).map((p) => ({ x: p.x, z: p.z, p: rng() * 100 }))
+    this.glows = [...spots, ...water, ...ring].slice(0, MAX_FIREFLIES)
     this.fly.count = this.flutters.length * 2
     this.flutters.forEach((f, i) => {
       this.c.set(BUTTERFLY_COLORS[Math.floor(f.p) % BUTTERFLY_COLORS.length])
