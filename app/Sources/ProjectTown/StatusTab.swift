@@ -18,18 +18,6 @@ struct StatusTab: View {
                     set: { value in store.update { $0.hideSessionNames = value } }
                 ))
             }
-
-            // Placeholder: hooks arrive in a later version (HANDOFF §15 M4).
-            Section(String(localized: "Claude hooks")) {
-                LabeledContent(String(localized: "Status")) { Text(String(localized: "Not available yet")) }
-                HStack {
-                    Button(String(localized: "Install")) {}
-                    Button(String(localized: "Remove")) {}
-                }
-                Text(String(localized: "Hooks let ProjectTown show when Claude is waiting for you. Installing them will edit ~/.claude/settings.json, back it up first, and only affect sessions started afterwards."))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .disabled(true)
         }
         .formStyle(.grouped)
     }

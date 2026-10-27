@@ -20,11 +20,19 @@ TBD: download from Releases, then remove the quarantine attribute (the app is no
 
 ## Usage
 
-TBD: open Settings from the menu bar, add project folders, optionally install hooks.
+TBD: open Settings from the menu bar, add project folders.
 
 ## How it works
 
-TBD. Note: `~/.claude/sessions` is an undocumented Claude Code internal format and may stop working after a Claude Code update.
+ProjectTown reads `~/.claude/sessions/*.json` once a second. Claude Code keeps one file there for each running session, with its working directory, status and name.
+
+- Each session goes to the project whose folder contains its working directory; the deepest matching folder wins.
+- The process ID in the file is checked to make sure the session is still running. The process start time is compared too, so a reused process ID is not mistaken for an old session.
+- The file's `status` drives the character: `busy` is Running, and `waiting` is Needs you. Claude Code sets `waiting` while it waits for you, for example at a permission prompt. `idle` shows as Just finished for a while after the session did some work, then Idle, then Sleeping.
+
+No hooks are needed, and ProjectTown never writes to `~/.claude`.
+
+> **Warning:** `~/.claude/sessions` is an undocumented internal format of Claude Code. A Claude Code update may change it and stop ProjectTown from seeing your sessions.
 
 ## Privacy
 
