@@ -1,5 +1,5 @@
 // The countryside around the town ("outskirts") as plain data, so placement can be tested. The town stands on a low
-// terrace (its verge garden, an avenue and a stone wall with gates); below it lie patchwork fields cut by a winding
+// terrace (its verge garden and a picket fence with gates); below it lie patchwork fields cut by a winding
 // river with two bridges, a railway with a tunnel at each end, dirt lanes from the gates to a few farms, windmills,
 // woods and a pond, and a ring of hills toward the plate edge. It reaches past the frame edges of the default view at
 // every orbit angle and is deterministic for a layout and seed.
@@ -14,7 +14,7 @@ const DEG = Math.PI / 180
 export const MAX_STYLE_HEIGHT = 19
 /** Widest viewport whose default view must be filled (16:10 and 3:2 are narrower, so they see less). */
 export const WIDEST_ASPECT = 16 / 9
-/** The town's terrace reaches this far past its bounds: the verge garden, then an avenue and a wall on its edge. */
+/** The town's terrace reaches this far past its bounds: the verge garden, then a strip of lawn and a fence on its edge. */
 export const TERRACE_W = VERGE_W + 3.6
 /** Top of the countryside ground (the plate). */
 export const COUNTRY_Y = -0.5
@@ -454,12 +454,15 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
   }
   const clearOf = (r: Rect): boolean => !blocks.some((o) => overlaps(r, o)) && !overlaps(r, riverBand(river, r, BANK + 0.4))
 
-  // Terrace avenue: round trees on the strip between the verge and the wall, open at the gates.
+  // The terrace edge carried an avenue of trees here until it got its fence (pastoral.ts). Draw what the avenue drew
+  // from the random stream, so everything placed after it keeps its place and look.
   const av = TERRACE_W - 1.9
   const avenue = (x: number, z: number): void => {
     const atGate = gates.some((g) => (g.axis === 'x' ? Math.abs(z - g.z) < 4.6 && Math.abs(x - g.x) < 3 : Math.abs(x - g.x) < 4.6 && Math.abs(z - g.z) < 3))
-    if (atGate || rng() < 0.12) return
-    trees.push({ x, y: TERRACE_Y, z, s: 0.95 + 0.15 * rng(), kind: 'round', v: 0.2 + 0.8 * rng(), lod: 0 })
+    if (!atGate && rng() >= 0.12) {
+      rng()
+      rng()
+    }
   }
   const ax0 = b.minX - av
   const az0 = b.minZ - av

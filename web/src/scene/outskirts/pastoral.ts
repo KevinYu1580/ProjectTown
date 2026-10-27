@@ -1,5 +1,5 @@
 // Pastoral theme: countryside around the town (placement in pastoralPlan.ts). Static parts go into one vertex-coloured mesh that is
-// tinted at night: the terrace wall with its gates and avenue, lanes, patchwork fields with crop rows, hedgerows, the
+// tinted at night: the terrace fence with its gates, lanes, patchwork fields with crop rows, hedgerows, the
 // river banks and bridges, the railway and its tunnel portals, farms, windmill towers, woods, animals and the hills.
 // The river and the pond use the water material; sparse warm windows and lanterns share one additive mesh. Moving
 // parts: a train that passes now and then, windmill sails and tractors (by day). Nothing here casts shadows, is a
@@ -403,46 +403,56 @@ export class Outskirts {
   }
 }
 
-/** Stone wall along the terrace edge with pillared gates (a lantern on each), and nothing else: the avenue is in the tree list. */
+// Terrace fence sizes (m): chunky enough to read from the default view, where the near edges are out of focus.
+const FENCE = {
+  inset: 0.2, // fence line inside the terrace edge
+  bay: 2.4, // post spacing
+  post: 0.32,
+  postH: 1.32,
+  picket: 0.26,
+  picketD: 0.1,
+  picketH: 1.14,
+  pitch: 0.4, // picket spacing
+  rail: 0.14,
+  railD: 0.08,
+}
+
+/**
+ * Whitewashed picket fence along the terrace edge (the terrace's stone sides are its plinth), with pillared gates (a
+ * lantern on each). Lite keeps the posts and rails and drops the pickets.
+ */
 function terraceEdge(b: Batch, glow: Batch, plan: OutskirtsPlan, c: Paint): void {
   const t = plan.terrace
   const stone = c(PAL.bgStone[1])
   const cap = c(PAL.bgStone[2])
-  const H = 0.55
-  const T = 0.5
   const open = 3.4 // half opening at a gate (the town road and its sidewalks)
-  const runs: Array<{ alongX: boolean; at: number; from: number; to: number; gaps: number[] }> = [
-    { alongX: true, at: t.z0 + 0.35, from: t.x0, to: t.x1, gaps: [] },
-    { alongX: true, at: t.z1 - 0.35, from: t.x0, to: t.x1, gaps: plan.gates.filter((g) => g.axis === 'z').map((g) => g.x) },
-    { alongX: false, at: t.x0 + 0.35, from: t.z0, to: t.z1, gaps: plan.gates.filter((g) => g.axis === 'x' && g.x <= t.x0 + 1e-6).map((g) => g.z) },
-    { alongX: false, at: t.x1 - 0.35, from: t.z0, to: t.z1, gaps: plan.gates.filter((g) => g.axis === 'x' && g.x >= t.x1 - 1e-6).map((g) => g.z) },
+  // Per side: its edge, which way is off the terrace, where its fence runs from and to (corner posts) and its gates.
+  const inset = FENCE.inset
+  const runs: Array<{ alongX: boolean; edge: number; out: number; from: number; to: number; gaps: number[] }> = [
+    { alongX: true, edge: t.z0, out: -1, from: t.x0 + inset, to: t.x1 - inset, gaps: [] },
+    { alongX: true, edge: t.z1, out: 1, from: t.x0 + inset, to: t.x1 - inset, gaps: plan.gates.filter((g) => g.axis === 'z').map((g) => g.x) },
+    { alongX: false, edge: t.x0, out: -1, from: t.z0 + inset, to: t.z1 - inset, gaps: plan.gates.filter((g) => g.axis === 'x' && g.x <= t.x0 + 1e-6).map((g) => g.z) },
+    { alongX: false, edge: t.x1, out: 1, from: t.z0 + inset, to: t.z1 - inset, gaps: plan.gates.filter((g) => g.axis === 'x' && g.x >= t.x1 - 1e-6).map((g) => g.z) },
   ]
+  const paint = { side: c(PAL.bgTrim), top: c(PAL.bgTrim, 1.06) }
   const lantern = col(PAL.bgGlow).multiplyScalar(0.6)
   for (const r of runs) {
-    let from = r.from
+    const line = { alongX: r.alongX, at: r.edge - r.out * inset, out: r.out }
     const cuts = [...r.gaps].sort((a, d) => a - d)
-    const pieces: Array<[number, number]> = []
+    // Pieces from a corner post or gate pillar to the next; the gates stay open.
+    let from = r.from
     for (const g of cuts) {
-      pieces.push([from, g - open])
-      from = g + open
+      terraceFence(b, line, from, g - open - 0.35, from !== r.from, true, paint, plan.lite)
+      from = g + open + 0.35
     }
-    pieces.push([from, r.to])
-    for (const [a, d] of pieces) {
-      if (d - a < 0.2) continue
-      if (r.alongX) {
-        b.strip(a, r.at - T / 2, d, r.at + T / 2, TERRACE_Y, H, stone, stone)
-        b.strip(a, r.at - T / 2 - 0.06, d, r.at + T / 2 + 0.06, TERRACE_Y + H, 0.1, cap, cap)
-      } else {
-        b.strip(r.at - T / 2, a, r.at + T / 2, d, TERRACE_Y, H, stone, stone)
-        b.strip(r.at - T / 2 - 0.06, a, r.at + T / 2 + 0.06, d, TERRACE_Y + H, 0.1, cap, cap)
-      }
-    }
+    terraceFence(b, line, from, r.to, from !== r.from, false, paint, plan.lite)
     // Gate pillars with a small lantern on top.
+    const at = r.edge - r.out * 0.35
     for (const g of cuts) {
       for (const sg of [-1, 1]) {
         const u = g + sg * (open + 0.35)
-        const x = r.alongX ? u : r.at
-        const z = r.alongX ? r.at : u
+        const x = r.alongX ? u : at
+        const z = r.alongX ? at : u
         b.box(x, TERRACE_Y, z, 0.8, 1.3, 0.8, stone, cap, 0.85)
         b.box(x, TERRACE_Y + 1.3, z, 0.95, 0.14, 0.95, cap)
         b.box(x, TERRACE_Y + 1.44, z, 0.32, 0.34, 0.32, c(0xeadcb0), null)
@@ -453,6 +463,44 @@ function terraceEdge(b: Batch, glow: Batch, plan: OutskirtsPlan, c: Paint): void
         }
       }
     }
+  }
+}
+
+/**
+ * One straight piece of the terrace fence from `a` to `d` along its line (`out` points off the terrace): posts at the
+ * ends and every bay, two rails on the inner side and pickets between. A gate pillar (0.8 wide) stands in for an end post.
+ */
+function terraceFence(
+  b: Batch, line: { alongX: boolean; at: number; out: number }, a: number, d: number, pillarA: boolean, pillarD: boolean,
+  p: { side: C; top: C }, lite: boolean,
+): void {
+  const F = FENCE
+  const box = (u: number, y: number, w: number, h: number, depth: number, side: C): void => {
+    if (line.alongX) b.box(u, y, line.at, w, h, depth, side, p.top, 0.85)
+    else b.box(line.at, y, u, depth, h, w, side, p.top, 0.85)
+  }
+  const n = Math.max(1, Math.round((d - a) / F.bay))
+  const posts = Array.from({ length: n + 1 }, (_, k) => a + ((d - a) * k) / n)
+  const pillar = (k: number): boolean => (k === 0 && pillarA) || (k === n && pillarD)
+  const half = (k: number): number => (pillar(k) ? 0.4 : F.post / 2)
+  const m = line.at - (line.out * (F.picketD + F.railD)) / 2
+  for (const y of [0.3, 0.85]) {
+    if (line.alongX) b.strip(a, m - F.railD / 2, d, m + F.railD / 2, TERRACE_Y + y, F.rail, p.side, p.top)
+    else b.strip(m - F.railD / 2, a, m + F.railD / 2, d, TERRACE_Y + y, F.rail, p.side, p.top)
+  }
+  posts.forEach((u, k) => {
+    if (pillar(k)) return
+    box(u, TERRACE_Y, F.post, F.postH, F.post, p.side)
+    box(u, TERRACE_Y + F.postH, F.post + 0.08, 0.08, F.post + 0.08, p.top)
+  })
+  if (lite) return
+  // Pickets spread over each bay with equal gaps, the ones at its ends included.
+  for (let k = 0; k < n; k++) {
+    const u0 = posts[k] + half(k)
+    const len = posts[k + 1] - half(k + 1) - u0
+    const count = Math.max(1, Math.round((len - F.pitch + F.picket) / F.pitch))
+    const gap = (len - count * F.picket) / (count + 1)
+    for (let j = 0; j < count; j++) box(u0 + gap * (j + 1) + F.picket * (j + 0.5), TERRACE_Y, F.picket, F.picketH, F.picketD, p.side)
   }
 }
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, cameraPosition, fitDistance } from '../src/scene/cameraMath'
-import { VERGE_W, computeLayout, type TownLayout } from '../src/scene/layout'
+import { computeLayout, type TownLayout } from '../src/scene/layout'
 import {
   BANK, CAP, CLEAR, FROZEN_T, LITE_CAP, MAX_STYLE_HEIGHT, RIPARIAN, TERRACE_W,
   grow, hillTierRadius, inRect, overlaps, planOutskirts, riverSpan, riverX, routePoint, tractorPose, trainPose, viewReach,
@@ -155,12 +155,8 @@ describe('planOutskirts', () => {
       for (const t of p.trees) {
         const at = `tree ${t.kind} ${t.x.toFixed(1)},${t.z.toFixed(1)}`
         if (wet(t.x, t.z, BANK) || ways.some((r) => inRect(r, t.x, t.z, 0.2))) bad.push(at)
-        // In town only the avenue, which stands between the verge and the wall.
-        if (inRect(p.terrace, t.x, t.z)) {
-          const b = computeLayout(n).bounds
-          const d = Math.max(b.minX - t.x, t.x - b.maxX, b.minZ - t.z, t.z - b.maxZ)
-          if (d < VERGE_W || d > TERRACE_W) bad.push(`${at} in town`)
-        }
+        // The terrace is the town's (its own trees, a fence on the edge): none of the countryside's.
+        if (inRect(p.terrace, t.x, t.z)) bad.push(`${at} in town`)
       }
       for (const a of [...p.animals, ...p.bales]) {
         if (wet(a.x, a.z, BANK) || ways.some((r) => inRect(r, a.x, a.z, 0.5)) || inRect(town(p), a.x, a.z)) bad.push(`animal/hay ${a.x.toFixed(1)},${a.z.toFixed(1)}`)
