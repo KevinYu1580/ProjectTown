@@ -9,16 +9,19 @@ final class SceneSettingsTests: XCTestCase {
     }
 
     func testRealtimeShape() throws {
-        let config = AppConfig(fps: 30, hudVisible: false, hideSessionNames: false, depthOfField: false,
-                               dayNight: DayNightConfig(mode: .realtime, sunrise: "05:45", sunset: "19:10"))
+        let config = AppConfig(fps: 30, hudVisible: false, hideSessionNames: false, theme: .urban, depthOfField: false,
+                               depthOfFieldStrength: 1.35, wallpaperSnapshot: true, dayNight: DayNightConfig(mode: .realtime, sunrise: "05:45", sunset: "19:10"))
         let settings = SceneSettings.make(config: config, locale: .zhHant, cycleEpochMs: 111)
         let j = try json(settings)
-        XCTAssertEqual(Set(j.keys), ["locale", "fps", "hudVisible", "hideSessionNames", "depthOfField", "dayNight", "camera"])
+        XCTAssertEqual(Set(j.keys), ["locale", "fps", "hudVisible", "hideSessionNames", "theme", "depthOfField",
+                                     "depthOfFieldStrength", "dayNight", "camera"])  // wallpaperSnapshot is Swift only
         XCTAssertEqual(j["locale"] as? String, "zh-Hant")
         XCTAssertEqual(j["fps"] as? Int, 30)
         XCTAssertEqual(j["hudVisible"] as? Bool, false)
         XCTAssertEqual(j["hideSessionNames"] as? Bool, false)
+        XCTAssertEqual(j["theme"] as? String, "urban")
         XCTAssertEqual(j["depthOfField"] as? Bool, false)
+        XCTAssertEqual(j["depthOfFieldStrength"] as? Double, 1.35)
 
         let dayNight = try XCTUnwrap(j["dayNight"] as? [String: Any])
         XCTAssertEqual(Set(dayNight.keys), ["mode", "sunrise", "sunset"])  // no cycle fields in realtime mode
@@ -59,6 +62,12 @@ final class SceneSettingsTests: XCTestCase {
         for (mode, raw) in [(CameraMode.fixed, "fixed"), (.interval, "interval"), (.continuous, "continuous")] {
             let camera = try XCTUnwrap(try json(.make(config: AppConfig(camera: CameraConfig(mode: mode)), locale: .en, cycleEpochMs: 0))["camera"] as? [String: Any])
             XCTAssertEqual(camera["mode"] as? String, raw)
+        }
+    }
+
+    func testThemeRawValues() throws {
+        for (theme, raw) in [(SceneTheme.pastoral, "pastoral"), (.urban, "urban")] {
+            XCTAssertEqual(try json(.make(config: AppConfig(theme: theme), locale: .en, cycleEpochMs: 0))["theme"] as? String, raw)
         }
     }
 

@@ -38,6 +38,8 @@ public struct ProjectConfig: Codable, Sendable, Equatable {
 
 public enum DayNightMode: String, Codable, Sendable { case realtime, cycle }
 public enum CameraMode: String, Codable, Sendable { case fixed, interval, continuous }
+/// What surrounds the town: countryside or a city neighbourhood.
+public enum SceneTheme: String, Codable, Sendable { case pastoral, urban }
 
 public struct CameraBase: Codable, Sendable, Equatable {
     public var azimuthDeg: Double
@@ -131,7 +133,12 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public var fps: Int
     public var hudVisible: Bool
     public var hideSessionNames: Bool
+    public var theme: SceneTheme
     public var depthOfField: Bool
+    /// Multiplies the depth-of-field blur; 1 is the default look.
+    public var depthOfFieldStrength: Double
+    /// Swift only: keep the system wallpaper of the town's display set to a snapshot of the town.
+    public var wallpaperSnapshot: Bool
     public var finishedWindowMinutes: Int
     public var sleepThresholdMinutes: Int
     public var dayNight: DayNightConfig
@@ -139,7 +146,8 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public var displayUUID: String?
 
     public init(version: Int = 1, projects: [ProjectConfig] = [], fps: Int = 60, hudVisible: Bool = true,
-                hideSessionNames: Bool = true, depthOfField: Bool = true, finishedWindowMinutes: Int = 30,
+                hideSessionNames: Bool = true, theme: SceneTheme = .pastoral, depthOfField: Bool = true,
+                depthOfFieldStrength: Double = 1, wallpaperSnapshot: Bool = true, finishedWindowMinutes: Int = 30,
                 sleepThresholdMinutes: Int = 120, dayNight: DayNightConfig = DayNightConfig(),
                 camera: CameraConfig = CameraConfig(), displayUUID: String? = nil) {
         self.version = version
@@ -147,7 +155,10 @@ public struct AppConfig: Codable, Sendable, Equatable {
         self.fps = fps
         self.hudVisible = hudVisible
         self.hideSessionNames = hideSessionNames
+        self.theme = theme
         self.depthOfField = depthOfField
+        self.depthOfFieldStrength = depthOfFieldStrength
+        self.wallpaperSnapshot = wallpaperSnapshot
         self.finishedWindowMinutes = finishedWindowMinutes
         self.sleepThresholdMinutes = sleepThresholdMinutes
         self.dayNight = dayNight
@@ -156,7 +167,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case version, projects, fps, hudVisible, hideSessionNames, depthOfField
+        case version, projects, fps, hudVisible, hideSessionNames, theme, depthOfField, depthOfFieldStrength, wallpaperSnapshot
         case finishedWindowMinutes, sleepThresholdMinutes, dayNight, camera, displayUUID
     }
 
@@ -169,7 +180,10 @@ public struct AppConfig: Codable, Sendable, Equatable {
             fps: try c.value(.fps, default: d.fps),
             hudVisible: try c.value(.hudVisible, default: d.hudVisible),
             hideSessionNames: try c.value(.hideSessionNames, default: d.hideSessionNames),
+            theme: try c.value(.theme, default: d.theme),
             depthOfField: try c.value(.depthOfField, default: d.depthOfField),
+            depthOfFieldStrength: try c.value(.depthOfFieldStrength, default: d.depthOfFieldStrength),
+            wallpaperSnapshot: try c.value(.wallpaperSnapshot, default: d.wallpaperSnapshot),
             finishedWindowMinutes: try c.value(.finishedWindowMinutes, default: d.finishedWindowMinutes),
             sleepThresholdMinutes: try c.value(.sleepThresholdMinutes, default: d.sleepThresholdMinutes),
             dayNight: try c.value(.dayNight, default: d.dayNight),
@@ -185,7 +199,10 @@ public struct AppConfig: Codable, Sendable, Equatable {
         try c.encode(fps, forKey: .fps)
         try c.encode(hudVisible, forKey: .hudVisible)
         try c.encode(hideSessionNames, forKey: .hideSessionNames)
+        try c.encode(theme, forKey: .theme)
         try c.encode(depthOfField, forKey: .depthOfField)
+        try c.encode(depthOfFieldStrength, forKey: .depthOfFieldStrength)
+        try c.encode(wallpaperSnapshot, forKey: .wallpaperSnapshot)
         try c.encode(finishedWindowMinutes, forKey: .finishedWindowMinutes)
         try c.encode(sleepThresholdMinutes, forKey: .sleepThresholdMinutes)
         try c.encode(dayNight, forKey: .dayNight)

@@ -49,6 +49,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     private var sentPaused = false
 
     private let desktopLevel = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)))
+    private let snapshotter: WallpaperSnapshotter
     private(set) var editingCamera = false
     /// Called with the camera the scene saved when the user finished editing.
     var onCameraSaved: ((CameraBase) -> Void)?
@@ -69,6 +70,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
             contentRect: Displays.screen(for: config.displayUUID)?.frame ?? .zero,
             styleMask: .borderless, backing: .buffered, defer: false
         )
+        snapshotter = WallpaperSnapshotter(window: window, webView: webView, enabled: config.wallpaperSnapshot)
         super.init()
 
         configuration.userContentController.add(WeakScriptHandler(self), name: "projectTown")
@@ -101,8 +103,18 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
             displayUUID = config.displayUUID
             reframe()
         }
+        let previous = settings
         settings = SceneSettings.make(config: config, locale: locale, cycleEpochMs: cycleEpochMs)
         flushSettings()
+        snapshotter.setEnabled(config.wallpaperSnapshot)
+        var look = previous
+        look.fps = settings.fps  // everything but the frame rate changes what the scene draws
+        if look != settings { snapshotter.sceneLookChanged() }
+    }
+
+    /// On quit: puts back the system wallpaper that a town snapshot replaced.
+    func restoreSystemWallpaper() {
+        snapshotter.restoreAll()
     }
 
     func push(state: TownState) {
@@ -123,6 +135,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     func reloadScene() {
         endCameraEdit()
         ready = false
+        updatePause()  // stops wallpaper snapshots until the new page is ready
         loadScene()
     }
 
@@ -278,8 +291,9 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     /// Calls `setPaused` only when the combined value differs from what the scene last heard.
     /// Camera editing always renders, even if the user paused from the menu.
     private func updatePause() {
-        guard ready else { return }
         let paused = !editingCamera && (occluded || screensAsleep || sessionResigned || userPaused)
+        snapshotter.setActive(ready && !editingCamera && !paused)
+        guard ready else { return }
         guard paused != sentPaused else { return }
         sentPaused = paused
         run("window.projectTown.setPaused(\(paused))")
@@ -297,7 +311,9 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
 
     private func reframe() {
         guard let screen = Displays.screen(for: displayUUID) else { return }
+        let previous = window.screen
         window.setFrame(screen.frame, display: true)
+        if let previous, Displays.uuid(of: previous) != Displays.uuid(of: screen) { snapshotter.townMoved(from: previous) }
     }
 
     // MARK: Dev measurement (HANDOFF §8.9)

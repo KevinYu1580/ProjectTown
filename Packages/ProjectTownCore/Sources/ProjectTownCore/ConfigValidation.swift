@@ -11,6 +11,7 @@ public enum ConfigLimits {
     public static let continuousPeriodMinutes = 2...60
     public static let pitchDeg = 20.0...70.0
     public static let zoom = 0.5...3.0
+    public static let depthOfFieldStrength = 0.25...2.0
 }
 
 /// One reason a config is invalid; carries the offending value.
@@ -30,6 +31,7 @@ public enum ConfigIssue: Sendable, Equatable {
     case cameraContinuousPeriodMinutes(Int)
     case cameraPitchDeg(Double)
     case cameraZoom(Double)
+    case depthOfFieldStrength(Double)
 }
 
 extension AppConfig {
@@ -70,12 +72,15 @@ extension AppConfig {
         // NaN is not contained in any range, so it is rejected too.
         if !ConfigLimits.pitchDeg.contains(camera.base.pitchDeg) { issues.append(.cameraPitchDeg(camera.base.pitchDeg)) }
         if !ConfigLimits.zoom.contains(camera.base.zoom) { issues.append(.cameraZoom(camera.base.zoom)) }
+        if !ConfigLimits.depthOfFieldStrength.contains(depthOfFieldStrength) {
+            issues.append(.depthOfFieldStrength(depthOfFieldStrength))
+        }
 
         return issues
     }
 
     /// Copy with each setting group that has an issue reset to its default; valid groups are kept.
-    /// Groups: fps; finished/sleep pair; day/night; camera interval; camera period; camera view.
+    /// Groups: fps; finished/sleep pair; day/night; camera interval; camera period; camera view; blur strength.
     public func repaired() -> AppConfig {
         var fixed = self
         let defaults = AppConfig()
@@ -94,6 +99,8 @@ extension AppConfig {
                 fixed.camera.continuousPeriodMinutes = defaults.camera.continuousPeriodMinutes
             case .cameraPitchDeg, .cameraZoom:
                 fixed.camera.base = defaults.camera.base
+            case .depthOfFieldStrength:
+                fixed.depthOfFieldStrength = defaults.depthOfFieldStrength
             }
         }
         return fixed
