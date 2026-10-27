@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A **Theme** setting: Countryside (the default) or City. City puts the town back in a neighbourhood, now far more varied: detached houses of many sizes and roof shapes, row houses, small apartment blocks, corner shops, workshops, a school with a sports field, a church, parks, playgrounds, plazas and parking lots, with the taller buildings kept away from the town so it stays the focus.
+- A **Blur strength** slider (25–200%) under the depth-of-field switch.
+- **Show the town while switching desktops** (on by default): macOS sometimes shows the system wallpaper for a moment while you switch desktops or open Mission Control, so ProjectTown sets the system wallpaper of its display to a recent snapshot of the town. Turning the option off, quitting, or moving the town to another display puts each desktop's own wallpaper back.
+
 ### Changed
 
-- The houses around the town are replaced by open countryside: the town now stands on a low walled terrace with an avenue of trees and gated roads, surrounded by patchwork fields, a winding river with a stone bridge and a rail bridge, a small train that passes through tunnels now and then, windmills, three farms, orchards, a pond, grazing sheep and cows, tractors by day and a ring of hills toward the edge. At night the countryside goes dark and quiet with only a few warm farm windows, gate lanterns, the passing train and fireflies over the water.
-- Depth of field blurs by distance instead of by screen position: the town, its signs and its people stay sharp wherever they are on screen, the scenery beyond it blurs more the farther away it is, things in front of the town blur only slightly, and the strongest blur is about a third weaker.
+- The default surroundings are open countryside: the town stands on a low terrace ringed by a white picket fence with three gated roads. Meadows and pastures with grazing sheep, two cottages with kitchen gardens, groves, wildflowers and a pond lie close by; patchwork fields, a winding river with a stone bridge and a rail bridge, a small train that passes through tunnels now and then, windmills, three farms and a ring of hills lie further out. At night the countryside goes dark and quiet with only a few warm windows, gate lanterns, the passing train and fireflies over the water.
+- Depth of field blurs by distance instead of by screen position: the town, its signs and its people stay sharp wherever they are on screen, the scenery beyond it blurs more the farther away it is, things in front of the town blur only slightly, and the strongest blur is about a third weaker. The setting is now called "Depth-of-field blur".
+- Street lamps at night have smaller, softer light pools and halos, and the glow around lights is a little weaker.
 
 ## [1.0.0] - 2026-10-27
 
