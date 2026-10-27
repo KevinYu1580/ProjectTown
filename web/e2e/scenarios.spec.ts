@@ -10,6 +10,12 @@ type Scenario = (typeof SCENARIOS)[number];
 test.use({ timezoneId: 'Asia/Taipei', viewport: { width: 1280, height: 800 } });
 test.setTimeout(120_000);
 
+// The animation tests run in real time and never look at pixels, and software WebGL (CI) pays per pixel: they use a
+// small window with the same aspect ratio. A frame is at most 100 ms of scene time and CI draws only a few per second,
+// so they wait for an animation to end (with a generous deadline) instead of sleeping a few seconds.
+const ANIMATION_VIEWPORT = { width: 480, height: 300 };
+const WAIT_MS = 60_000;
+
 interface Collected {
   errors: string[];
 }
@@ -187,6 +193,7 @@ for (const scenario of SCENARIOS) {
 }
 
 test('lang=zh-Hant: HUD and hint are in Traditional Chinese', async ({ page }) => {
+  test.slow(); // five page loads, each a shader compile on software WebGL
   const c = collectErrors(page);
   const totals: Partial<Record<Scenario, string>> = { empty: '0 個 session', single: '5 個 session', crowded: '10 個 session', nodata: '0 個 session' };
   for (const sc of ['empty', 'crowded', 'nodata', 'many', 'single'] as const) {
@@ -222,6 +229,7 @@ test('hideSessionNames=false: named labels read "name・relative time"', async (
 });
 
 test('frozen time: the same URL gives identical screenshots', async ({ page }) => {
+  test.slow(); // two page loads
   const shots: Buffer[] = [];
   for (let i = 0; i < 2; i++) {
     await open(page, 'busy', `time=${TIMES.night}`);
@@ -317,6 +325,21 @@ async function pathOf(page: Page, id: string, from: number): Promise<Array<{ x: 
   );
 }
 
+/** Waits until the person has moved and then stood still for three frames, i.e. the walk is over. */
+async function walkedAndStopped(page: Page, id: string, from: number): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const path = await pathOf(page, id, from);
+        const last = path[path.length - 1];
+        const rested = path.length >= 4 && path.slice(-3).every((p) => p.x === last.x && p.z === last.z);
+        return rested && path.some((p) => p.x !== path[0].x || p.z !== path[0].z);
+      },
+      { timeout: WAIT_MS, intervals: [250] },
+    )
+    .toBe(true);
+}
+
 const steps = (path: Array<{ x: number; z: number }>) => path.slice(1).map((p, i) => Math.hypot(p.x - path[i].x, p.z - path[i].z));
 /** Distinct positions visited strictly between the first and last sample. */
 const intermediates = (path: Array<{ x: number; z: number }>) => {
@@ -364,6 +387,7 @@ function expectWalked(path: Array<{ x: number; z: number }>, what: string): void
 
 test('state changes move people smoothly (no teleporting)', async ({ page }) => {
   const c = collectErrors(page);
+  await page.setViewportSize(ANIMATION_VIEWPORT);
   await open(page, 'single', 'x=1');
   await startTrace(page);
   const id = await page.evaluate(() => window.__projectTownDebug?.getCharacters().find((p) => p.state === 'idle')?.id ?? '');
@@ -372,7 +396,7 @@ test('state changes move people smoothly (no teleporting)', async ({ page }) => 
   for (const st of chain) {
     const from = await traceLength(page);
     await editSession(page, id, st);
-    await page.waitForTimeout(2200);
+    await walkedAndStopped(page, id, from);
     const path = await pathOf(page, id, from);
     // Every hop (including waiting -> finished, about 1.3 m) is walked, never snapped.
     expectWalked(path, `into ${st}`);
@@ -384,6 +408,7 @@ test('state changes move people smoothly (no teleporting)', async ({ page }) => 
 
 test('a removed session walks to the road and then disappears', async ({ page }) => {
   const c = collectErrors(page);
+  await page.setViewportSize(ANIMATION_VIEWPORT);
   await open(page, 'single', 'x=1');
   await startTrace(page);
   const id = await page.evaluate(() => window.__projectTownDebug?.getCharacters().find((p) => p.state === 'running')?.id ?? '');
@@ -393,7 +418,7 @@ test('a removed session walks to the road and then disappears', async ({ page })
   await page.waitForTimeout(1000);
   const present = () => page.evaluate((pid) => !!window.__projectTownDebug?.getCharacters().some((p) => p.id === pid), id);
   expect(await present(), 'still walking after 1 s').toBe(true);
-  await expect.poll(present, { timeout: 8000, intervals: [250] }).toBe(false);
+  await expect.poll(present, { timeout: WAIT_MS, intervals: [250] }).toBe(false);
   const path = await pathOf(page, id, from);
   const travelled = Math.hypot(path[path.length - 1].x - path[0].x, path[path.length - 1].z - path[0].z);
   expect(travelled, 'distance walked before vanishing').toBeGreaterThan(4);
@@ -404,6 +429,7 @@ test('a removed session walks to the road and then disappears', async ({ page })
 
 test('a session that falls asleep fades out where it sits and shows zZ on the sign', async ({ page }) => {
   const c = collectErrors(page);
+  await page.setViewportSize(ANIMATION_VIEWPORT);
   await open(page, 'single', 'x=1');
   await startTrace(page);
   const id = await page.evaluate(() => window.__projectTownDebug?.getCharacters().find((p) => p.state === 'idle')?.id ?? '');
@@ -413,7 +439,7 @@ test('a session that falls asleep fades out where it sits and shows zZ on the si
   const from = await traceLength(page);
   await editSession(page, id, 'sleeping');
   const present = () => page.evaluate((pid) => !!window.__projectTownDebug?.getCharacters().some((p) => p.id === pid), id);
-  await expect.poll(present, { timeout: 6000, intervals: [250] }).toBe(false);
+  await expect.poll(present, { timeout: WAIT_MS, intervals: [250] }).toBe(false);
   const path = await pathOf(page, id, from);
   expect(Math.max(0, ...steps(path)), 'a sleeper fades in place').toBeLessThan(0.01);
   const after = await page.evaluate(() => window.__projectTownDebug?.getSignTexts()[0].lines[1] ?? '');
@@ -423,6 +449,7 @@ test('a session that falls asleep fades out where it sits and shows zZ on the si
 
 test('a hidden session takes the place of a removed one in a crowded lot', async ({ page }) => {
   const c = collectErrors(page);
+  await page.setViewportSize(ANIMATION_VIEWPORT);
   await open(page, 'crowded', 'x=1');
   await startTrace(page);
   const chars = () => page.evaluate(() => window.__projectTownDebug?.getCharacters() ?? []);
@@ -433,7 +460,7 @@ test('a hidden session takes the place of a removed one in a crowded lot', async
   const from = await traceLength(page);
   await editSession(page, first[0].id, null);
   // The removed person walks off for a few seconds; afterwards only the 6 visible ones remain.
-  await expect.poll(async () => (await chars()).length, { timeout: 12_000, intervals: [250] }).toBe(6);
+  await expect.poll(async () => (await chars()).length, { timeout: WAIT_MS, intervals: [250] }).toBe(6);
   const now = await chars();
   expect(now.some((p) => p.id === first[0].id)).toBe(false);
   const newcomer = now.find((p) => !first.some((q) => q.id === p.id));

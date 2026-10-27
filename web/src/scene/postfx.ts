@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
 import type { Pass } from 'three/addons/postprocessing/Pass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { CopyShader } from 'three/addons/shaders/CopyShader.js'
@@ -14,6 +15,10 @@ const MAX_BLUR = 0.038 // blur radius at full blur, as a fraction of the screen 
 
 const BLOOM = { strength: 0.35, radius: 0.55, threshold: 1.0 }
 
+// Blur taps on each side of the centre pixel. The lite pipeline (software rasteriser) uses fewer.
+const TILT_TAPS = 12
+const LITE_TILT_TAPS = 4
+
 const VERT = /* glsl */ `
 varying vec2 vUv;
 void main() {
@@ -23,13 +28,13 @@ void main() {
 
 // One axis of a separable Gaussian whose radius depends only on the screen y of the pixel.
 // Rows inside the sharp band take a single tap, and the branch is coherent per row.
-const FRAG = /* glsl */ `
+const frag = (taps: number): string => /* glsl */ `
 uniform sampler2D tDiffuse;
 uniform vec2 axis;
 uniform vec2 texel;
 uniform float maxRadius;
 varying vec2 vUv;
-const int TAPS = 12;
+const int TAPS = ${taps};
 void main() {
   float d = abs(vUv.y - ${BAND_CENTER.toFixed(3)});
   float k = smoothstep(0.0, 1.0, clamp((d - ${BAND_HALF.toFixed(3)}) / ${BAND_FALLOFF.toFixed(3)}, 0.0, 1.0));
@@ -52,7 +57,7 @@ void main() {
 }`
 
 class TiltShiftPass extends ShaderPass {
-  constructor(axis: THREE.Vector2) {
+  constructor(axis: THREE.Vector2, taps: number) {
     super(
       new THREE.ShaderMaterial({
         uniforms: {
@@ -62,7 +67,7 @@ class TiltShiftPass extends ShaderPass {
           maxRadius: { value: 0 },
         },
         vertexShader: VERT,
-        fragmentShader: FRAG,
+        fragmentShader: frag(taps),
       }),
     )
   }
@@ -113,19 +118,23 @@ class SceneMsaaPass extends ShaderPass {
 
 export class PostFX {
   private readonly composer: EffectComposer
-  private readonly bloom: HalfResBloomPass
   private readonly tilt: TiltShiftPass[]
   private readonly passes: Pass[]
 
-  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera) {
+  /**
+   * `lite` is for software rasterisers (SwiftShader on CI), where these effects cost several times the scene itself:
+   * a plain scene pass instead of MSAA, no bloom, and fewer tilt-shift taps.
+   */
+  constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, lite = false) {
     const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType })
     this.composer = new EffectComposer(renderer, target)
 
-    const render = new SceneMsaaPass(scene, camera)
-    this.bloom = new HalfResBloomPass(new THREE.Vector2(1, 1), BLOOM.strength, BLOOM.radius, BLOOM.threshold)
-    this.tilt = [new TiltShiftPass(new THREE.Vector2(1, 0)), new TiltShiftPass(new THREE.Vector2(0, 1))]
+    const render = lite ? new RenderPass(scene, camera) : new SceneMsaaPass(scene, camera)
+    const bloom = lite ? [] : [new HalfResBloomPass(new THREE.Vector2(1, 1), BLOOM.strength, BLOOM.radius, BLOOM.threshold)]
+    const taps = lite ? LITE_TILT_TAPS : TILT_TAPS
+    this.tilt = [new TiltShiftPass(new THREE.Vector2(1, 0), taps), new TiltShiftPass(new THREE.Vector2(0, 1), taps)]
     const output = new OutputPass()
-    this.passes = [render, this.bloom, ...this.tilt, output]
+    this.passes = [render, ...bloom, ...this.tilt, output]
     for (const p of this.passes) this.composer.addPass(p)
   }
 

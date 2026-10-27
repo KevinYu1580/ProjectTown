@@ -28,6 +28,8 @@ interface EditSession {
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera
   onEditClosed: ((saved: CameraBase | null) => void) | null = null
+  /** Fires when the pose may have changed outside `update()` (settings, presets, orbit controls), so an idle loop can redraw. */
+  onChange: (() => void) | null = null
   private bounds: TownLayout['bounds'] = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 }
   private maxHeight = 8
   private settings: CameraSettings = {
@@ -69,6 +71,7 @@ export class CameraRig {
     this.base = base
     if (this.edit) this.edit.snapshot = copyBase(base)
     else if (restart) this.elapsed = 0
+    this.onChange?.()
   }
 
   setLocale(locale: Locale): void {
@@ -95,6 +98,7 @@ export class CameraRig {
   enterEdit(dom: HTMLElement, locale: Locale): void {
     if (this.edit) return
     const controls = new OrbitControls(this.camera, dom)
+    controls.addEventListener('change', () => this.onChange?.())
     controls.screenSpacePanning = false // pan along the ground
     controls.minPolarAngle = (90 - PITCH_MAX) * DEG
     controls.maxPolarAngle = (90 - PITCH_MIN) * DEG
@@ -123,6 +127,7 @@ export class CameraRig {
     this.elapsed = 0
     this.base = save ? clampBase({ ...next, azimuthDeg: r3(((next.azimuthDeg % 360) + 360) % 360), pitchDeg: r3(next.pitchDeg), zoom: r3(next.zoom), target: [r3(next.target[0]), r3(next.target[1])] }) : e.snapshot
     this.applyPose(this.base.azimuthDeg)
+    this.onChange?.()
     return save ? copyBase(this.base) : null
   }
 
@@ -145,6 +150,7 @@ export class CameraRig {
       this.base = clampBase(b)
       this.elapsed = 0
     }
+    this.onChange?.()
   }
 
   /** The base the camera is showing right now (edit mode: read back from the orbit controls). */

@@ -218,4 +218,116 @@ describe('RenderLoop', () => {
     frame(16.667)
     expect(calls).toBe(2)
   })
+
+  describe('on demand', () => {
+    /** Runs 60 Hz ticks until the loop stops asking for animation frames; returns the last tick time. */
+    const drain = (from: number): number => {
+      let ts = from
+      for (let i = 0; i < 20 && queue.size > 0; i++) frame((ts += 1000 / 60))
+      expect(queue.size, 'loop never went idle').toBe(0)
+      return ts
+    }
+
+    it('draws a few frames after start, then stops requesting animation frames', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 60, true)
+      loop.start()
+      expect(queue.size).toBe(1)
+      drain(0)
+      expect(onFrame.mock.calls.length).toBeGreaterThanOrEqual(1)
+      expect(onFrame.mock.calls.length).toBeLessThanOrEqual(5)
+      const drawn = onFrame.mock.calls.length
+      frame(5000) // no callback is queued any more
+      expect(onFrame).toHaveBeenCalledTimes(drawn)
+    })
+
+    it('invalidate() draws again, and a second one while idle needs no extra callback', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 60, true)
+      loop.start()
+      const ts = drain(0)
+      const before = onFrame.mock.calls.length
+      loop.invalidate()
+      loop.invalidate()
+      expect(queue.size).toBe(1)
+      drain(ts)
+      expect(onFrame.mock.calls.length).toBe(before * 2)
+    })
+
+    it('invalidate() during a burst extends it', () => {
+      const plain = vi.fn()
+      const a = new RenderLoop(plain, 60, true)
+      a.start()
+      drain(0)
+      a.stop()
+
+      const extended = vi.fn()
+      const b = new RenderLoop(extended, 60, true)
+      b.start()
+      frame(0)
+      b.invalidate() // after one frame of the burst
+      drain(0)
+      expect(extended.mock.calls.length).toBe(plain.mock.calls.length + 1)
+    })
+
+    it('keeps requesting animation frames while throttling ticks, until the owed frames are drawn', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 15, true) // 60 Hz @ 15 fps: every 4th tick renders
+      loop.start()
+      const ts = drain(-1000 / 60)
+      expect(onFrame.mock.calls.length).toBeGreaterThanOrEqual(1)
+      expect(ts).toBeGreaterThan(2 * (1000 / 60)) // took several ticks, not one per frame
+    })
+
+    it('invalidate() while paused schedules nothing, un-pausing draws', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 60, true)
+      loop.start()
+      drain(0)
+      loop.setPaused(true)
+      loop.invalidate()
+      expect(queue.size).toBe(0)
+      loop.setPaused(false)
+      expect(queue.size).toBe(1)
+    })
+
+    it('the first frame after idle has dt 0 and the idle time is not counted', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 60, true)
+      loop.start()
+      drain(0)
+      const idle = onFrame.mock.calls.length
+      loop.invalidate()
+      frame(60_000)
+      expect(onFrame.mock.calls[idle][0]).toBe(0)
+    })
+
+    it('reports 0 fps once idle', () => {
+      const loop = new RenderLoop(() => {}, 60, true)
+      loop.start()
+      for (let ts = 0; queue.size > 0; ts += 1500) frame(ts) // slow frames, so a 1 s window completes
+      expect(loop.measuredFps).toBe(0)
+    })
+
+    it('stop() cancels a pending frame and later invalidate() does nothing', () => {
+      const loop = new RenderLoop(() => {}, 60, true)
+      loop.start()
+      loop.stop()
+      expect(queue.size).toBe(0)
+      loop.invalidate()
+      expect(queue.size).toBe(0)
+    })
+
+    it('invalidate() changes nothing in a continuous loop', () => {
+      const onFrame = vi.fn()
+      const loop = new RenderLoop(onFrame, 60)
+      loop.start()
+      frame(0)
+      loop.invalidate()
+      expect(queue.size).toBe(1)
+      for (let i = 1; i <= 50; i++) frame(i * (1000 / 60))
+      expect(queue.size).toBe(1)
+      expect(onFrame).toHaveBeenCalledTimes(51)
+    })
+  })
 })

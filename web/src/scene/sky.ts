@@ -38,8 +38,9 @@ export class Sky {
   private radius = 40
   private townRadius = 30
 
-  constructor(private readonly scene: THREE.Scene, renderer: THREE.WebGLRenderer) {
-    renderer.shadowMap.enabled = true
+  /** `shadows` off (software rasterisers): no shadow pass and no shadow lookups in any shader. */
+  constructor(private readonly scene: THREE.Scene, renderer: THREE.WebGLRenderer, shadows = true) {
+    renderer.shadowMap.enabled = shadows
     // three 0.186 removed PCFSoftShadowMap; PCFShadowMap is its soft-edged replacement.
     renderer.shadowMap.type = THREE.PCFShadowMap
     this.sun.castShadow = true

@@ -15,6 +15,7 @@ import { PAL } from './palette'
 import { PostFX } from './postfx'
 import { RenderLoop } from './loop'
 import { Sky } from './sky'
+import { isSoftwareRenderer, rendererName } from './softwareRenderer'
 import { Street } from './street'
 import { VoxelBuilder, disposeGeometries, material } from './voxel'
 
@@ -82,14 +83,18 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.renderer.info.autoReset = false // reset once per frame so the totals cover every post-processing pass
     this.root.appendChild(this.renderer.domElement)
 
-    this.sky = new Sky(this.scene, this.renderer)
+    // A software rasteriser (SwiftShader on CI) cannot afford the full effect stack: no shadows, MSAA or bloom.
+    const lite = isSoftwareRenderer(rendererName(this.renderer.getContext()))
+    this.sky = new Sky(this.scene, this.renderer, !lite)
     this.street = new Street(this.scene)
     this.ambient = new Ambient(this.scene)
     this.rig = new CameraRig(window.innerWidth / window.innerHeight)
-    this.postfx = new PostFX(this.renderer, this.scene, this.rig.camera)
+    this.postfx = new PostFX(this.renderer, this.scene, this.rig.camera, lite)
     this.characters = new CharacterManager(this.scene, { rng: createRng(this.seed), animate: !this.clock.frozen })
     this.hud = new Hud(this.root)
-    this.loop = new RenderLoop(this.frame, this.settings.fps)
+    // A frozen scene (dt = 0) only changes when told to, so it is drawn on demand instead of every frame.
+    this.loop = new RenderLoop(this.frame, this.settings.fps, this.clock.frozen)
+    this.rig.onChange = () => this.loop.invalidate()
 
     this.hint.style.cssText = HINT_CSS
     this.hint.setAttribute('data-testid', 'empty-hint')
@@ -135,6 +140,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.refit()
     this.syncCharacters()
     this.refreshOverlay()
+    this.loop.invalidate()
   }
 
   applySettings(s: SceneSettings): void {
@@ -146,6 +152,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.applyLight(true)
     this.refreshOverlay()
     this.syncCharacters()
+    this.loop.invalidate()
   }
 
   setPaused(paused: boolean): void {
@@ -267,6 +274,7 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.renderer.setSize(w, h)
     this.postfx.setSize(w, h, pr)
     this.rig.resize(w, h)
+    this.loop.invalidate()
     // Resizing clears the canvas; a paused loop will not redraw it.
     if (this.firstFrameDone && this.loop.isPaused) this.postfx.render()
   }
