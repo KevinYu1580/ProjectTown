@@ -67,8 +67,21 @@ final class WallpaperSnapshotLedgerTests: XCTestCase {
     func testObsoleteFilesKeepTwoNewestPerSlot() {
         let names = ["town-1-5.jpg", "town-1-30.jpg", "town-1-7.jpg", "town-1-12.jpg",
                      "town-2-3.jpg", "town-2-4.jpg", "town-3-1.jpg", "slots.json", "notes.txt"]
-        XCTAssertEqual(Set(WallpaperSnapshotLedger.obsoleteFiles(names)), ["town-1-5.jpg", "town-1-7.jpg"])
-        XCTAssertEqual(WallpaperSnapshotLedger.obsoleteFiles([]), [])
+        let epoch = Date(timeIntervalSince1970: 0)  // nothing is a week old yet
+        XCTAssertEqual(Set(WallpaperSnapshotLedger.obsoleteFiles(names, now: epoch)), ["town-1-5.jpg", "town-1-7.jpg"])
+        XCTAssertEqual(WallpaperSnapshotLedger.obsoleteFiles([], now: epoch), [])
+    }
+
+    func testObsoleteFilesDropSlotsWithoutASnapshotForAWeek() {
+        let now = Date(timeIntervalSince1970: 30 * 86_400)
+        func file(_ slot: Int, daysAgo: Double) -> String {
+            WallpaperSnapshotLedger.fileName(slot: slot, serial: Int64((now.timeIntervalSince1970 - daysAgo * 86_400) * 1000))
+        }
+        let names = [file(1, daysAgo: 0.1), file(1, daysAgo: 0.2), file(1, daysAgo: 0.3),  // in use: only the oldest goes
+                     file(2, daysAgo: 6.9), file(2, daysAgo: 8),  // newest is just under a week old: both stay
+                     file(3, daysAgo: 7.1), file(3, daysAgo: 9)]  // no snapshot for a week: all go
+        XCTAssertEqual(Set(WallpaperSnapshotLedger.obsoleteFiles(names, now: now)),
+                       [file(1, daysAgo: 0.3), file(3, daysAgo: 7.1), file(3, daysAgo: 9)])
     }
 
     func testSaveAndLoad() throws {

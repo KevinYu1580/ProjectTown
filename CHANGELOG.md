@@ -14,8 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Wallpaper snapshots of a desktop or display that has not been seen for a week are deleted, so old snapshots no longer pile up in `~/Library/Application Support/ProjectTown/Wallpaper/`.
+- The "!" bubble over a waiting person is about a third smaller, and project signs and name labels are now drawn over every status symbol (gear, "!", zZ), so a symbol never hides a name.
 - The Countryside's sheep, cows and pigs wander from spot to spot as they graze, on their own pasture or hill tier.
 - More traffic in the City: more cars on the streets and in the parking lots.
+
+### Fixed
+
+- Switching to a full-screen app while ProjectTown was taking a wallpaper snapshot could set the snapshot as the wallpaper of that app's space instead of the desktop's. ProjectTown now checks with the window server that the town is still on the same desktop before it sets the wallpaper.
 
 ## [1.1.0] - 2026-10-27
 
