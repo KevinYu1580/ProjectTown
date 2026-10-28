@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-28
+
 ### Added
 
 - People out walking: each strolls a round of its own along the town's sidewalks and zebra crossings and out of town, along the roads into the City's neighbourhood or through the gates to the farms in the Countryside (fewer there), keeping right and waiting at the kerb now and then. They look like the town's people but wear muted, greyish clothes instead of pastel ones, have no name or symbol and go indoors by night, so they are not mistaken for your sessions.
