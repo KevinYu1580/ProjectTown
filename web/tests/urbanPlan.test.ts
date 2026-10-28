@@ -7,6 +7,7 @@ import {
   carPose, footprint, inHood, overlaps, planOutskirts, roofRise, routePoint, viewReach,
   type OutskirtsPlan, type Rect,
 } from '../src/scene/outskirts/urbanPlan'
+import { walkerPose } from '../src/scene/outskirts/walkers'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]
@@ -324,5 +325,45 @@ describe('cars', () => {
     const b = carPose(p.routes[car.route], car, 10 + lap)
     expect(b.x).toBeCloseTo(a.x, 4)
     expect(b.z).toBeCloseTo(a.z, 4)
+  })
+})
+
+describe('walkers', () => {
+  it("pace the sidewalks of the town's roads, outside the town, at any time", () => {
+    for (const n of [1, 6, 25]) {
+      const p = plan(n)
+      const town = computeLayout(n).bounds
+      expect(p.walkers.length).toBe(CAP.walkers)
+      for (const w of p.walkers) {
+        for (const t of [0, 1.7, 41.3, 333, 9999]) {
+          const { x, z } = walkerPose(w, t)
+          const at = `n=${n} t=${t} (${x.toFixed(2)}, ${z.toFixed(2)})`
+          const onWalk = p.exits.some((e) => {
+            const [across, along] = e.axis === 'z' ? [x, z] : [z, x]
+            const off = Math.abs(across - e.at)
+            return off >= MAIN_HALF - 1.5 && off <= MAIN_HALF && along >= Math.min(e.from, e.to) && along <= Math.max(e.from, e.to)
+          })
+          expect(onWalk, at).toBe(true)
+          expect(x > town.minX && x < town.maxX && z > town.minZ && z < town.maxZ, at).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('stroll without jumping, turning round where they stop', () => {
+    for (const w of plan(6).walkers) {
+      let prev = walkerPose(w, 0)
+      for (let t = 0.1; t < 200; t += 0.1) {
+        const q = walkerPose(w, t)
+        expect(Math.hypot(q.x - prev.x, q.z - prev.z)).toBeLessThan(w.speed * 0.1 * 1.01)
+        prev = q
+      }
+    }
+  })
+
+  it('are left out of the lite plan, and the busier traffic fills a big town up to the cap', () => {
+    expect(plan(6, 1, true).walkers).toEqual([])
+    expect(plan(25).cars.length).toBe(CAP.cars)
+    expect(plan(25).parked.length).toBeGreaterThan(36)
   })
 })

@@ -11,6 +11,7 @@ import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../c
 import { ROAD_WIDTH, SIDEWALK_WIDTH, VERGE_W, type TownLayout } from '../layout'
 import { PAL } from '../palette'
 import type { RoadExit } from '../street'
+import { planWalkers, sidewalkLines, type Walker } from './walkers'
 
 const DEG = Math.PI / 180
 /** Tallest building style (the clock tower, 18.8) rounded up: the view is sized for the tallest possible town. */
@@ -27,12 +28,12 @@ export const ASPHALT_HALF = ROAD_WIDTH / 2 - SIDEWALK_WIDTH
 export const MAIN_HALF = ASPHALT_HALF + 0.2 + SIDEWALK_WIDTH
 // Nothing of the outskirts comes closer than this to the town bounds (the verge is the town's garden).
 const VERGE_CLEAR = VERGE_W + 0.5
-export const CAP = { houses: 2400, trees: 1600, cars: 34, parked: 36 }
-// Software rasterisers (CI): the nearest houses only, no parked cars, a few moving ones.
-export const LITE_CAP = { houses: 220, trees: 140, cars: 8, parked: 0 }
+export const CAP = { houses: 2400, trees: 1600, cars: 56, parked: 50, walkers: 30 }
+// Software rasterisers (CI): the nearest houses only, no parked cars or walkers, a few moving cars.
+export const LITE_CAP = { houses: 220, trees: 140, cars: 8, parked: 0, walkers: 0 }
 const PLOT_TONES = 4
 const ROUTE_RADIUS = 1.4 // centreline radius of a car loop's corners
-const CAR_SPACING = 30 // average gap between cars in one lane
+const CAR_SPACING = 20 // average gap between cars in one lane
 /** Storey height (x scale) of shops, flats and schools. */
 export const STOREY = 2.05
 /**
@@ -109,6 +110,7 @@ export interface OutskirtsPlan {
   routes: Route[]
   cars: Car[]
   parked: ParkedCar[]
+  walkers: Walker[] // people on the sidewalks of the town's roads, outside the town
 }
 
 /**
@@ -441,7 +443,8 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
       { axis: 'x', at: z, from, to, walks: openSpans(from, to, laneXs, LANE_W / 2), tinted: true }
     ))),
   ]
-  return { lite: opts.lite, scale: s, reach, plate, hood, lanes, mains, exits, blocks, plots, pads, houses, trees, pond, routes, cars, parked }
+  const walkers = planWalkers(sidewalkLines(exits, Math.min(60, Math.max(24, 0.4 * reach))), cap.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${cols}x${rows}`)))
+  return { lite: opts.lite, scale: s, reach, plate, hood, lanes, mains, exits, blocks, plots, pads, houses, trees, pond, routes, cars, parked, walkers }
 }
 
 /** Pieces of [a, c] left between gaps of +-gap around the sorted positions `gaps` (gaps outside [a, c] are ignored). */

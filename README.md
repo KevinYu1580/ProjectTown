@@ -24,8 +24,8 @@ When a session ends, its person walks out to the road and off the map.
 
 **The town**
 
-- The town stands on a low terrace ringed by a white picket fence, in open countryside: meadows and pastures with grazing sheep, cottages and groves close by, patchwork fields further out, a river with two bridges, a small train that passes now and then, windmills, a few farms and hills all around, so the whole desktop is filled at any camera angle. Nothing out there has a sign or a person, so it is never mistaken for your projects.
-- Prefer a city? Set the theme to **City** (Settings → Appearance) and the town sits in a varied neighbourhood instead: houses of many sizes, row houses, small apartment blocks, corner shops, a school, a church, parks and parking lots.
+- The town stands on a low terrace ringed by a white picket fence, in open countryside: meadows and pastures where sheep, cows and pigs wander as they graze, cottages and groves close by, patchwork fields further out, a river with two bridges, a small train that passes now and then, windmills, a few farms and hills all around, so the whole desktop is filled at any camera angle. Nothing out there has a sign, and the few people walking the lanes are half the height of yours, plainly dressed and indoors by night, so they are never mistaken for your projects.
+- Prefer a city? Set the theme to **City** (Settings → Appearance) and the town sits in a varied neighbourhood instead: houses of many sizes, row houses, small apartment blocks, corner shops, a school, a church, parks and parking lots, with traffic on the streets and people on the sidewalks.
 - Ten building styles (office, factory, café, bookstore, lab, warehouse, radio tower, greenhouse, clock tower, ramen shop), picked automatically or chosen per project, with your project color as an accent.
 - A glowing sign above each building with the project name and per-state counts, plus "+N" when more people are inside than fit on screen.
 - A HUD panel in the bottom-left corner with the session counts of every project. It is off by default; turn it on in Settings → Appearance.

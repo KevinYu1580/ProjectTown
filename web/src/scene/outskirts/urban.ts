@@ -16,6 +16,7 @@ import {
   ASPHALT_HALF, LANE_EDGE, LANE_HALF, LANE_W, MAIN_HALF, STOREY, carPose, inHood, planOutskirts, roofTier, type CarPose, type Facing,
   type House, type OutskirtsPlan, type Pad, type Plot, type Tree,
 } from './urbanPlan'
+import { WalkerMeshes } from './walkers'
 
 const T0 = 41.3 // seconds; the frame a frozen scene shows
 const GROUND = -0.02 // block lawns: 0.03 above the plate's grass, below the road tops (y = 0)
@@ -197,6 +198,7 @@ export class Outskirts {
   private glow: THREE.Mesh | null = null
   private cars: THREE.InstancedMesh | null = null
   private lamps: THREE.InstancedMesh | null = null
+  private walkers: WalkerMeshes | null = null
   private plan: OutskirtsPlan | null = null
   private t = T0
   private level = 1
@@ -267,9 +269,15 @@ export class Outskirts {
         content.add(this.lamps)
       }
     }
+    if (plan.walkers.length > 0) {
+      const shirt = (w: (typeof plan.walkers)[number]) => tones.get(PAL.bgShirt[w.shirt], hazeAt((w.x0 + w.x1) / 2, (w.z0 + w.z1) / 2))
+      this.walkers = new WalkerMeshes(plan.walkers, s, this.mat, shirt)
+      content.add(this.walkers.group)
+    }
     this.content = content
     this.root.add(content)
     this.poseCars()
+    this.walkers?.update(this.t)
     this.setLightLevel(this.level)
     return { exits: plan.exits, glows: [], surround: (outer, props, water) => surround(outer, props, water, plan) }
   }
@@ -285,12 +293,15 @@ export class Outskirts {
     this.lampMat.color.setScalar(a)
     if (this.glow) this.glow.visible = a > 0.01
     if (this.lamps) this.lamps.visible = a > 0.01
+    // People are out by day and through dusk.
+    if (this.walkers) this.walkers.group.visible = level > 0.3
   }
 
   update(dtMs: number): void {
     if (dtMs <= 0) return
     this.t += dtMs / 1000
     this.poseCars()
+    this.walkers?.update(this.t)
   }
 
   dispose(): void {
@@ -327,6 +338,7 @@ export class Outskirts {
     this.glow = null
     this.cars = null
     this.lamps = null
+    this.walkers = null
   }
 
   /** One building: a baked contact shadow, then its kind's walls, roof and openings; a few lit windows glow at night. */

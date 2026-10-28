@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- People out walking: on the sidewalks of the town's roads in the City, and fewer of them on the dirt lanes in the Countryside. They are half the height of the town's people, plainly dressed and indoors by night, so they are not mistaken for your projects.
+- Pigs in some of the Countryside's pastures.
+
+### Changed
+
+- The Countryside's sheep, cows and pigs wander from spot to spot as they graze, on their own pasture or hill tier.
+- More traffic in the City: more cars on the streets and in the parking lots.
+
 ## [1.1.0] - 2026-10-27
 
 ### Added

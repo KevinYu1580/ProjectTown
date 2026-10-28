@@ -9,6 +9,7 @@ import { createRng } from '../../util/prng'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../cameraMath'
 import { VERGE_W, type TownLayout } from '../layout'
 import type { RoadExit } from '../street'
+import { planWalkers, type WalkLine, type Walker } from './walkers'
 
 const DEG = Math.PI / 180
 /** Tallest building style (the clock tower, 18.8) rounded up: the view is sized for the tallest possible town. */
@@ -39,8 +40,8 @@ const MIN_PIECE = 3
 export const FROZEN_T = 41.3
 /** Locomotive and coach lengths at lot scale 1; speed in m/s; the train waits in a tunnel between passes. */
 export const TRAIN = { loco: 4, coach: 4.4, gap: 0.3, coaches: 3, speed: 7, wait: 75 }
-export const CAP = { trees: 1500, animals: 90, bales: 60 }
-// Software rasterisers (CI): flat fields, the trees nearest the town, no animals, bales, hedgerows or tractors.
+export const CAP = { trees: 1500, animals: 90, bales: 60, walkers: 8 }
+// Software rasterisers (CI): flat fields, the trees nearest the town, no animals, bales, hedgerows, tractors or walkers.
 export const LITE_CAP = { trees: 140 }
 
 export interface Rect { x0: number; x1: number; z0: number; z1: number }
@@ -83,7 +84,14 @@ export interface Hill { x: number; z: number; r: number; levels: number; kind: '
 export interface Tunnel extends Rect { portal: number; levels: number }
 export interface Pond { x: number; z: number; rx: number; rz: number }
 export interface Tree { x: number; y: number; z: number; s: number; kind: TreeKind; v: number; lod: Lod }
-export interface Animal { x: number; y: number; z: number; kind: 'sheep' | 'cow'; facing: Facing; s: number }
+export type AnimalKind = 'sheep' | 'cow' | 'pig'
+/** One stop of a grazing round: stand at (x, z) for `pause` seconds, then walk `walk` seconds to the next stop. */
+export interface Stop { x: number; z: number; pause: number; walk: number }
+/**
+ * A grazing animal at (x, z) on ground at height `y`. It walks a closed round of `stops` (the first is (x, z)) that keeps
+ * to its field or hill tier, `period` seconds long, from `phase` seconds in; `tone` indexes its kind's coat palette.
+ */
+export interface Animal { x: number; y: number; z: number; kind: AnimalKind; s: number; tone: number; stops: Stop[]; period: number; phase: number }
 export interface Bale { x: number; y: number; z: number; s: number }
 /** Closed loop along lane or field centrelines: a rectangle with rounded corners. */
 export interface Route { rect: Rect; r: number; length: number }
@@ -114,6 +122,7 @@ export interface OutskirtsPlan {
   animals: Animal[]
   bales: Bale[]
   tractors: Tractor[]
+  walkers: Walker[] // people on the dirt lanes from the gates
   glows: Array<{ x: number; z: number }> // firefly spots over the river and the pond
 }
 
@@ -482,6 +491,13 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
 
   const trees: Tree[] = []
   const animals: Animal[] = []
+  const grazers: Array<{ a: Animal; field?: Rect; hill?: Hill; level?: number }> = []
+  const animal = (kind: AnimalKind, x: number, y: number, z: number): Animal => {
+    const tone = kind === 'cow' ? ((x * 13.7) % 2 < 1 ? 0 : 2) : kind === 'pig' ? ((x * 7.3) % 2 < 1 ? 0 : 1) : 0
+    const a: Animal = { x, y, z, kind, s, tone, stops: [], period: 1, phase: 0 }
+    animals.push(a)
+    return a
+  }
   const bales: Bale[] = []
   const hedges: Rect[] = []
   const tree = (x: number, y: number, z: number, sc: number, kind: TreeKind): void => {
@@ -517,11 +533,14 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
         if (inRect(f, x, z, -1)) tree(x, y, z, s * (0.9 + 0.3 * fr()), fr() < 0.45 ? 'willow' : 'round')
       }
     } else if (f.crop === 'pasture') {
-      const cows = fr() < 0.4
-      const n = Math.round(clamp((w * d) / (cows ? 130 : 75), 2, cows ? 5 : 8))
+      const pick = fr()
+      const kind: AnimalKind = pick < 0.4 ? 'cow' : pick < 0.62 ? 'pig' : 'sheep'
+      const n = Math.round(clamp((w * d) / HERD[kind].area, 2, HERD[kind].most))
       for (let i = 0; i < n && w > 5 && d > 5; i++) {
-        const facing = (['x+', 'x-', 'z+', 'z-'] as const)[Math.floor(fr() * 4)]
-        animals.push({ x: f.x0 + 2 + fr() * (w - 4), y, z: f.z0 + 2 + fr() * (d - 4), kind: cows ? 'cow' : 'sheep', facing, s })
+        fr() // was the facing; still drawn so the field's other draws keep their places
+        const x = f.x0 + 2 + fr() * (w - 4)
+        const z = f.z0 + 2 + fr() * (d - 4)
+        grazers.push({ a: animal(kind, x, y, z), field: f })
       }
       // Shade trees, more in big pastures.
       for (let i = w > 9 && d > 9 ? Math.round(clamp((w * d) / 260, 0.6, 3) + fr() - 0.5) : 0; i > 0; i--) {
@@ -615,7 +634,13 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
         if (lv < 1 || !inRect(plate, px, pz, -2) || tunnels.some((tn) => inRect(tn, px, pz, 1))) continue
         const y = COUNTRY_Y + lv * LEVEL_H
         if (h.kind === 'wood' && hr() < 0.85) tree(px, y, pz, s * (1 + 0.5 * hr()), hr() < 0.6 ? 'cone' : 'round')
-        else if (h.kind === 'pasture' && hr() < 0.35) animals.push({ x: px, y, z: pz, kind: 'sheep', facing: hr() < 0.5 ? 'x+' : 'z-', s })
+        else if (h.kind === 'pasture' && hr() < 0.35) {
+          hr() // was the facing; still drawn so the hill's other draws keep their places
+          // Clear of the next tier up (of this hill or one it overlaps), so the sheep never stands in a step.
+          if (hills.every((o) => hillLevel(o, px, pz, -0.8) <= lv) && hillLevel(h, px, pz, -0.8) === lv) {
+            grazers.push({ a: animal('sheep', px, y, pz), hill: h, level: lv })
+          }
+        }
       }
     }
   }
@@ -644,6 +669,29 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
   const glows: Array<{ x: number; z: number }> = []
   for (let z = t.z0 - 20; z < t.z1 + 20; z += 3.5) glows.push({ x: riverX(river, z) + (rng() - 0.5) * 2 * (half + 1), z })
   for (const p of ponds) for (let i = 0; i < 8; i++) glows.push({ x: p.x + (rng() - 0.5) * 2 * p.rx, z: p.z + (rng() - 0.5) * 2 * p.rz })
+
+  // Each animal grazes round a few spots of its field (clear of the shade trees) or along its hill tier.
+  for (const g of grazers) {
+    let ok: (x: number, z: number) => boolean
+    if (g.field) {
+      const f = g.field
+      const shade = trees.filter((tr) => inRect(f, tr.x, tr.z, 1))
+      ok = (x, z) => inRect(f, x, z, -1.3) && shade.every((tr) => Math.hypot(tr.x - x, tr.z - z) > 1.2 * tr.s)
+    } else {
+      const h = g.hill!
+      ok = (x, z) =>
+        hillLevel(h, x, z, 0.8) === g.level && hills.every((o) => hillLevel(o, x, z, -0.8) <= g.level!) &&
+        inRect(plate, x, z, -2) && !tunnels.some((tn) => inRect(tn, x, z, 1))
+    }
+    Object.assign(g.a, grazingRound(g.a, ok, createRng(fnv1a32(`graze:${opts.seed}:${g.a.x.toFixed(2)},${g.a.z.toFixed(2)}`))))
+  }
+  // People walk the flat of the dirt lanes from the gates (not their ramps), a little either side of the middle.
+  const laneLines = lanes.map((l): WalkLine => {
+    const alongX = l.axis === 'x'
+    const a = (alongX ? l.x0 : l.z0) + (l.ramp === 'x0' || l.ramp === 'z0' ? RAMP : 0) + 0.5
+    const b = (alongX ? l.x1 : l.z1) - (l.ramp === 'x1' || l.ramp === 'z1' ? RAMP : 0) - 0.5
+    return { axis: l.axis, at: alongX ? (l.z0 + l.z1) / 2 : (l.x0 + l.x1) / 2, a, b, offset: 0.45 * k, y: COUNTRY_Y + 0.03 }
+  })
 
   // Caps: the trees nearest the town are the ones on screen most of the time.
   const byNear = <T extends { x: number; z: number }>(list: T[], n: number): T[] =>
@@ -678,8 +726,82 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     animals: lite ? [] : byNear(animals, CAP.animals),
     bales: lite ? [] : byNear(bales, CAP.bales),
     tractors: lite ? [] : tractors,
+    walkers: lite ? [] : planWalkers(laneLines, CAP.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${t.x0.toFixed(1)}`))),
     glows,
   }
+}
+
+/** Walking speed (m/s at lot scale 1) per kind, and the pasture each animal of a herd wants (m²) up to `most` of them. */
+const HERD: Record<AnimalKind, { speed: number; area: number; most: number }> = {
+  sheep: { speed: 0.3, area: 75, most: 8 },
+  cow: { speed: 0.24, area: 130, most: 5 },
+  pig: { speed: 0.34, area: 95, most: 6 },
+}
+const GRAZE_TURN = 0.8 // seconds at the end of a stop spent turning to the next leg
+const GRAZE_STEP = 0.22 // one step at lot scale 1: the body bobs once per step
+
+/** A closed round of up to five stops from the animal's spot, every stop and the way between them passing `ok`. */
+function grazingRound(a: Animal, ok: (x: number, z: number) => boolean, rng: () => number): Pick<Animal, 'stops' | 'period' | 'phase'> {
+  // Checked every quarter metre: a hill tier is a cross, and a straight walk could cut its inner corners.
+  const clear = (p: { x: number; z: number }, q: { x: number; z: number }): boolean => {
+    const n = Math.max(2, Math.ceil(Math.hypot(q.x - p.x, q.z - p.z) / 0.25))
+    for (let i = 1; i <= n; i++) if (!ok(p.x + ((q.x - p.x) * i) / n, p.z + ((q.z - p.z) * i) / n)) return false
+    return true
+  }
+  const spots = [{ x: a.x, z: a.z }]
+  const want = 3 + Math.floor(rng() * 3)
+  for (let tries = 0; spots.length < want && tries < 30; tries++) {
+    const prev = spots[spots.length - 1]
+    const dir = rng() * Math.PI * 2
+    const d = (1.2 + 3 * rng()) * a.s
+    const q = { x: prev.x + Math.cos(dir) * d, z: prev.z + Math.sin(dir) * d }
+    if (clear(prev, q)) spots.push(q)
+  }
+  while (spots.length > 1 && !clear(spots[spots.length - 1], spots[0])) spots.pop()
+  const speed = HERD[a.kind].speed * a.s
+  const stops = spots.map((p, i) => {
+    const q = spots[(i + 1) % spots.length]
+    return { x: p.x, z: p.z, pause: 3 + 9 * rng(), walk: Math.hypot(q.x - p.x, q.z - p.z) / speed }
+  })
+  const period = stops.reduce((sum, st) => sum + st.pause + st.walk, 0)
+  return { stops, period, phase: rng() * period }
+}
+
+/** Where a grazing animal is at animation time `t` (seconds), its heading and a small step bob. Writes into `out`. */
+export function animalPose(a: Animal, t: number, out = { x: 0, z: 0, yaw: 0, lift: 0 }): { x: number; z: number; yaw: number; lift: number } {
+  const { stops } = a
+  const n = stops.length
+  let u = (((t + a.phase) % a.period) + a.period) % a.period
+  for (let i = 0; i < n; i++) {
+    const st = stops[i]
+    const next = stops[(i + 1) % n]
+    const leave = Math.atan2(next.x - st.x, next.z - st.z)
+    if (u < st.pause || i === n - 1) {
+      // Grazing: still facing the way it came, it turns to the next leg in the last moments.
+      const prev = stops[(i + n - 1) % n]
+      const arrive = Math.atan2(st.x - prev.x, st.z - prev.z)
+      const turn = ((((leave - arrive) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI
+      const k = clamp((u - st.pause + GRAZE_TURN) / GRAZE_TURN, 0, 1)
+      if (u < st.pause) {
+        out.x = st.x
+        out.z = st.z
+        out.yaw = arrive + turn * k * k * (3 - 2 * k)
+        out.lift = 0
+        return out
+      }
+    }
+    u -= st.pause
+    if (u < st.walk || i === n - 1) {
+      const f = st.walk > 0 ? Math.min(u / st.walk, 1) : 0
+      out.x = st.x + (next.x - st.x) * f
+      out.z = st.z + (next.z - st.z) * f
+      out.yaw = leave
+      out.lift = 0.025 * a.s * Math.abs(Math.sin((Math.PI * u * HERD[a.kind].speed) / GRAZE_STEP))
+      return out
+    }
+    u -= st.walk
+  }
+  return out
 }
 
 /** The river's water and banks next to `r` (grown by `pad` beyond the water), as a rect. */
@@ -689,7 +811,7 @@ function riverBand(river: River, r: Rect, pad: number): Rect {
 }
 
 /** Index of the highest contour tier of `h` under (x, z), keeping `inset` from its edge; 0 = not on the hill. */
-function hillLevel(h: Hill, x: number, z: number, inset = 0): number {
+export function hillLevel(h: Hill, x: number, z: number, inset = 0): number {
   let level = 0
   for (let i = 0; i < h.levels; i++) {
     const r = hillTierRadius(h, i) - inset
