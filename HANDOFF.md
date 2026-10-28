@@ -56,7 +56,7 @@ ProjectTown 是一個 **macOS 動態桌布 app**。它把使用者設定的每�
 | Q20 | 多螢幕 | v1 只在一台螢幕上顯示，預設主螢幕，可在設定中選擇 |
 | Q22 | 資料更新 | 每秒輪詢一次，狀態有變才推給場景 |
 | Q24 | Release | SemVer、`CHANGELOG.md`（Keep a Changelog）、push tag 後由 GitHub Actions 自動 build 並發佈 |
-| Q25 | 語言 | 介面支援繁體中文與英文（跟隨系統語言）；README 只寫英文版，但要列出支援語言 |
+| Q25 | 語言 | 介面支援繁體中文與英文（跟隨系統語言）；README 有英文版與繁中版（`README.zh-Hant.md`，2026-10-28 使用者追加），並列出支援語言 |
 | Q26 | 最低版本 | macOS 14 Sonoma |
 | Q27 | 隱私 | 「隱藏 session 名稱」開關，**預設開啟** |
 | Q28/Q33 | 測試 | 場景有 mock 模式；Swift 與 Web 都要有單元測試；Playwright 冒煙測試；本地 `make check` 與 CI 跑相同檢查 |
@@ -148,7 +148,7 @@ ProjectTown 是一個 **macOS 動態桌布 app**。它把使用者設定的每�
 ```
 ProjectTown/
 ├─ HANDOFF.md
-├─ README.md                 英文
+├─ README.md                 英文（另有 README.zh-Hant.md 繁中版）
 ├─ CHANGELOG.md              Keep a Changelog 格式
 ├─ LICENSE                   MIT，Copyright (c) 2026 KevinYu1580
 ├─ Makefile                  check / dev / app / test-web / test-swift / clean
