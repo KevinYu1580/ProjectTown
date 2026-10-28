@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Wallpaper snapshots of a desktop or display that has not been seen for a week are deleted, so old snapshots no longer pile up in `~/Library/Application Support/ProjectTown/Wallpaper/`.
+- The "!" bubble over a waiting person is about a third smaller, and project signs and name labels are now drawn over every status symbol (gear, "!", zZ), so a symbol never hides a name.
 
 ### Fixed
 

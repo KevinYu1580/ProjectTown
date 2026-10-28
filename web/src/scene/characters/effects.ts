@@ -4,9 +4,9 @@ import { DRAWN_ON_TOP } from '../postfx'
 // Screen-space sprites (sizeAttenuation off) keep their pixel size at any zoom: one scale unit = PX pixels
 // at a 982 px tall viewport with the 30 degree FOV.
 export const PX = Math.tan(Math.PI / 12) / 491
-export const BUBBLE_PX = 52
-export const BOUNCE_PX = 10
-export const STAGGER_PX = 28 // odd slots raise their bubble so neighbours do not coincide
+export const BUBBLE_PX = 36
+export const BOUNCE_PX = 7
+export const STAGGER_PX = 20 // odd slots raise their bubble so neighbours do not coincide
 export const GEAR_PX = 24
 export const GEAR_GAP = 0.7 // world units between head top and gear centre
 
@@ -130,7 +130,7 @@ export interface Bang {
   halo: THREE.Sprite
 }
 
-export const HALO_PX = 150
+export const HALO_PX = 104
 
 /** Materials shared by every person's head effects (gear, "!" bubble, green ring). */
 export class Effects {
@@ -140,7 +140,8 @@ export class Effects {
   // A gear needs its own material (the sprite spin is a material property); they all follow the night tint.
   private readonly gearMats = new Set<THREE.SpriteMaterial>()
   private readonly bubble = bubbleTexture()
-  // Drawn on top and at a fixed screen size: the "!" must be the most visible thing wherever the person stands.
+  // Drawn over the scene at a fixed screen size, so the "!" shows wherever the person stands; only names (signs,
+  // labels) go over it.
   private readonly bangMat = new THREE.SpriteMaterial({
     map: this.bubble, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP,
   })

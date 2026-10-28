@@ -111,7 +111,8 @@ export class Sign {
     this.sprite.onBeforeRender = (renderer, _scene, camera) => this.fitToScreen(renderer, camera)
     live.add(this)
     // Drawn over roof props (dish, stacks) so the counts and +N are never clipped.
-    this.sprite.renderOrder = 3 // above the street glow, below people effects (labels 4, bubble 8)
+    // Over people effects too (gear 5, "!" 1000-1001), so no symbol hides a name; below people's labels (1003).
+    this.sprite.renderOrder = 1002
     this.object = this.sprite
     this.applyGlow()
   }
