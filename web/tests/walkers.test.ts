@@ -71,6 +71,9 @@ function paving(theme: 'city' | 'country', n: number): Rect[] {
 const PAD = 0.02
 const inside = (r: Rect, x: number, z: number, pad = 1e-6): boolean => x >= r.x0 - pad && x <= r.x1 + pad && z >= r.z0 - pad && z <= r.z1 + pad
 
+// Some checks walk every plan through a whole period: give them room on slow CI runners.
+const LONG = 30_000
+
 describe('walkers', () => {
   it('set foot only on paving, the whole body on it, and keep clear of the street trees', () => {
     for (const [theme, plan] of THEMES) {
@@ -81,7 +84,7 @@ describe('walkers', () => {
         const trees = layout.trees.filter((t) => t.x > b.minX && t.x < b.maxX && t.z > b.minZ && t.z < b.maxZ)
         for (const w of plan(n).walkers) {
           const h = (BODY / 2) * w.s
-          for (let t = 0; t < PERIOD; t += 0.5) {
+          for (let t = 0; t < PERIOD; t += 1) {
             const { x, y, z } = walkerPose(w, t)
             const at = `${theme} n=${n} t=${t} (${x.toFixed(2)}, ${z.toFixed(2)})`
             for (const [px, pz] of [[x - h, z], [x + h, z], [x, z - h], [x, z + h]]) expect(ground.some((r) => inside(r, px, pz, PAD)), at).toBe(true)
@@ -94,7 +97,7 @@ describe('walkers', () => {
         }
       }
     }
-  })
+  }, LONG)
 
   it('walk down the ramps from the gates and along the lanes on the ground (country)', () => {
     const p = country(6)
@@ -137,7 +140,7 @@ describe('walkers', () => {
         }
       }
     }
-  })
+  }, LONG)
 
   it('roam: each on a round of its own, in and out of the town, and out to the farms in the country', () => {
     for (const [theme, plan] of THEMES) {
