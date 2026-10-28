@@ -93,7 +93,7 @@ No hooks are needed, and ProjectTown never writes to `~/.claude`.
 - Everything happens on your Mac. ProjectTown makes no network connections.
 - It reads only `~/.claude/sessions/*.json` (session ID, working directory, status, name and timestamps) and its own settings file. It never reads your conversations, prompts or transcripts, and it never writes to `~/.claude`.
 - Session names are hidden on the wallpaper by default (Settings → Status → Hide session names).
-- Settings are stored in `~/Library/Application Support/ProjectTown/config.json`. Wallpaper snapshots, and a note of the wallpaper each desktop had before, are kept in `~/Library/Application Support/ProjectTown/Wallpaper/`.
+- Settings are stored in `~/Library/Application Support/ProjectTown/config.json`. Wallpaper snapshots, and a note of the wallpaper each desktop had before, are kept in `~/Library/Application Support/ProjectTown/Wallpaper/`. Snapshots of a desktop or display that has not been seen for a week are deleted.
 
 ## Known limitations
 
