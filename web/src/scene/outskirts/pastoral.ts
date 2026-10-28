@@ -337,7 +337,7 @@ export class Outskirts {
       this.herds.push({ mesh, animals })
     }
     if (plan.walkers.length > 0) {
-      this.walkers = new WalkerMeshes(plan.walkers, plan.scale, this.mat, (w) => at((w.x0 + w.x1) / 2, (w.z0 + w.z1) / 2)(PAL.bgShirt[w.shirt]))
+      this.walkers = new WalkerMeshes(plan.walkers, this.mat)
       content.add(this.walkers.group)
     }
     this.content = content

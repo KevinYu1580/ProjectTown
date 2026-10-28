@@ -70,9 +70,10 @@ export const PAL = {
   bgPlinth: 0x9d978c,
   bgPath: 0xc9c1b2,
   bgCar: [0xdcd7cc, 0x8f9ba7, 0xb4806f, 0x7f8e7d, 0xcfbf8e, 0x6d737f, 0x9fb2b6, 0xc2aa9b],
-  // People on the sidewalks where the town's roads leave it (both themes): muted shirts; skin, hair and trousers.
-  bgShirt: [0xd8d2c6, 0x7c8aa0, 0xa77c6c, 0x8f9470, 0xb39e6e, 0x6f7d8b, 0xc49a9a, 0x5f7f78],
-  bgPerson: [0xe2b896, 0x3d302b, 0x4a4f5e],
+  // People walking outside the town (both themes): the town's people in plain clothes, darker and greyer than the
+  // sessions' pastel shirts, so the two never read alike.
+  bgShirt: [0x7c8aa0, 0xa77c6c, 0x8f9470, 0xb39e6e, 0x6f7d8b, 0x5f7f78, 0x8a7f96, 0x9a8a78],
+  bgPants: [0x4a4f5e, 0x5e584f, 0x3f4b4b, 0x6b6f78],
 
   // Countryside around the town (pastoral outskirts): warm and calm, a little softer than the town and never an accent,
   // so it reads as scenery behind the projects. Door, glass, chimney and glow colours are shared by both themes.

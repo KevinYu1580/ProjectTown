@@ -7,7 +7,7 @@ import {
   carPose, footprint, inHood, overlaps, planOutskirts, roofRise, routePoint, viewReach,
   type OutskirtsPlan, type Rect,
 } from '../src/scene/outskirts/urbanPlan'
-import { walkerPose } from '../src/scene/outskirts/walkers'
+import { BODY, walkerPose, type Walker } from '../src/scene/outskirts/walkers'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]
@@ -328,6 +328,17 @@ describe('cars', () => {
   })
 })
 
+/** The closest any two walkers come in two minutes, in bodies. */
+function closest(walkers: Walker[]): number {
+  let min = Infinity
+  for (let t = 0; t < 120; t += 0.25) {
+    const at = walkers.map((w) => walkerPose(w, t))
+    for (let i = 0; i < at.length; i++)
+      for (let j = i + 1; j < at.length; j++) min = Math.min(min, Math.hypot(at[i].x - at[j].x, at[i].z - at[j].z) / (BODY * walkers[i].s))
+  }
+  return min
+}
+
 describe('walkers', () => {
   it("pace the sidewalks of the town's roads, outside the town, at any time", () => {
     for (const n of [1, 6, 25]) {
@@ -341,13 +352,18 @@ describe('walkers', () => {
           const onWalk = p.exits.some((e) => {
             const [across, along] = e.axis === 'z' ? [x, z] : [z, x]
             const off = Math.abs(across - e.at)
-            return off >= MAIN_HALF - 1.5 && off <= MAIN_HALF && along >= Math.min(e.from, e.to) && along <= Math.max(e.from, e.to)
+            const half = (BODY / 2) * w.s // the whole body on the sidewalk
+            return off >= MAIN_HALF - 1.5 + half && off <= MAIN_HALF - half && along >= Math.min(e.from, e.to) && along <= Math.max(e.from, e.to)
           })
           expect(onWalk, at).toBe(true)
           expect(x > town.minX && x < town.maxX && z > town.minZ && z < town.maxZ, at).toBe(false)
         }
       }
     }
+  })
+
+  it('keep a body apart, as two could not pass on a sidewalk', () => {
+    for (const n of [1, 6, 25]) expect(closest(plan(n).walkers), `n=${n}`).toBeGreaterThanOrEqual(1)
   })
 
   it('stroll without jumping, turning round where they stop', () => {

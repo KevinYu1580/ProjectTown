@@ -8,7 +8,7 @@ import {
   type OutskirtsPlan, type Rect,
 } from '../src/scene/outskirts/pastoralPlan'
 import { planOutskirts as planCity } from '../src/scene/outskirts/urbanPlan'
-import { walkerPose } from '../src/scene/outskirts/walkers'
+import { BODY, walkerPose } from '../src/scene/outskirts/walkers'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]
@@ -403,7 +403,7 @@ describe('walkers', () => {
         for (const t of [0, 1.7, FROZEN_T, 333, 9999]) {
           const { x, z } = walkerPose(w, t)
           const at = `n=${n} t=${t} (${x.toFixed(2)}, ${z.toFixed(2)})`
-          const lane = p.lanes.find((l) => inRect(l, x, z))
+          const lane = p.lanes.find((l) => inRect(l, x, z, (-BODY / 2) * w.s)) // the whole body on the lane
           expect(lane, at).toBeDefined()
           const along = lane!.axis === 'x' ? x : z
           if (lane!.ramp === 'x0' || lane!.ramp === 'z0') expect(along, at).toBeGreaterThan((lane!.axis === 'x' ? lane!.x0 : lane!.z0) + RAMP)
@@ -412,5 +412,18 @@ describe('walkers', () => {
       }
     }
     expect(plan(6, 1, true).walkers).toEqual([])
+  })
+
+  it('keep a body apart', () => {
+    for (const n of [1, 6, 25]) {
+      const walkers = plan(n).walkers
+      let min = Infinity
+      for (let t = 0; t < 120; t += 0.25) {
+        const at = walkers.map((w) => walkerPose(w, t))
+        for (let i = 0; i < at.length; i++)
+          for (let j = i + 1; j < at.length; j++) min = Math.min(min, Math.hypot(at[i].x - at[j].x, at[i].z - at[j].z) / (BODY * walkers[i].s))
+      }
+      expect(min, `n=${n}`).toBeGreaterThanOrEqual(1)
+    }
   })
 })

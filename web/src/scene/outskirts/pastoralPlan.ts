@@ -690,7 +690,7 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     const alongX = l.axis === 'x'
     const a = (alongX ? l.x0 : l.z0) + (l.ramp === 'x0' || l.ramp === 'z0' ? RAMP : 0) + 0.5
     const b = (alongX ? l.x1 : l.z1) - (l.ramp === 'x1' || l.ramp === 'z1' ? RAMP : 0) - 0.5
-    return { axis: l.axis, at: alongX ? (l.z0 + l.z1) / 2 : (l.x0 + l.x1) / 2, a, b, offset: 0.45 * k, y: COUNTRY_Y + 0.03 }
+    return { axis: l.axis, at: alongX ? (l.z0 + l.z1) / 2 : (l.x0 + l.x1) / 2, a, b, offset: 0.6 * k, y: COUNTRY_Y + 0.03 }
   })
 
   // Caps: the trees nearest the town are the ones on screen most of the time.

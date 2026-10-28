@@ -1,23 +1,36 @@
-// People on the sidewalks of the town's roads where they leave the town: background life, small and muted next to the
-// town's own people. Each paces a straight stretch of one sidewalk to and fro and stands a moment at each end. Shared
-// by both themes: the plan side is plain data (placement can be tested), the meshes are two instanced batches.
+// People walking outside the town (the sidewalks of the town's roads where they leave it, the country lanes from the
+// gates): the town's own people (characters/person.ts) in plain clothes, without names or symbols. Each paces its own
+// part of one side to and fro and stands a moment at each end. Shared by both themes: the plan side is plain data
+// (placement can be tested), the meshes are four instanced batches.
 import * as THREE from 'three'
+import { JOINTS, PersonParts, SKINS } from '../characters/person'
 import { PAL } from '../palette'
 import type { RoadExit } from '../street'
+import { paint } from '../voxel'
 
 /** A person pacing from (x0, z0) to (x1, z1) and back at height `y`, standing `rest` seconds at each end. */
-export interface Walker { x0: number; z0: number; x1: number; z1: number; y: number; speed: number; rest: number; phase: number; s: number; shirt: number }
-export interface WalkerPose { x: number; z: number; yaw: number; lift: number }
+export interface Walker {
+  x0: number; z0: number; x1: number; z1: number; y: number; speed: number; rest: number; phase: number; s: number
+  shirt: number; pants: number; skin: number // indices into PAL.bgShirt, PAL.bgPants and the town's skin tones
+}
+export interface WalkerPose { x: number; z: number; yaw: number; lift: number; swing: number }
 
 /** Sidewalk centre beside a road line: half the asphalt, the kerb and half the sidewalk (street.ts). */
 export const WALK_OFFSET = 1.5 + 0.2 + 1.5 / 2
 export const SIDEWALK_TOP = 0.1
-const STRIDE = 0.42 // one step (x scale): the body bobs once per step
+/** Room a person takes across (arms included) at lot scale 1: people keep this far apart. */
+export const BODY = 0.9
+// The town's people's gait (person.ts): stride cycle (radians per unit walked at lot scale 1), leg swing and bob.
+const GAIT = 6
+const SWING = 0.75
+const BOB = 0.05
 const TURN = 0.7 // seconds of the rest spent turning round
+const HAIR = 1 // the town's brown hair: it darkens with the skin tone (see WalkerMeshes)
 
-/** Where a walker is at animation time `t` (seconds), its heading and a small step bob. Writes into `out`. */
-export function walkerPose(w: Walker, t: number, out: WalkerPose = { x: 0, z: 0, yaw: 0, lift: 0 }): WalkerPose {
-  const leg = Math.hypot(w.x1 - w.x0, w.z1 - w.z0) / w.speed
+/** Where a walker is at animation time `t` (seconds): heading, step bob and leg swing. Writes into `out`. */
+export function walkerPose(w: Walker, t: number, out: WalkerPose = { x: 0, z: 0, yaw: 0, lift: 0, swing: 0 }): WalkerPose {
+  const len = Math.hypot(w.x1 - w.x0, w.z1 - w.z0)
+  const leg = len / w.speed
   const half = leg + w.rest
   let u = (((t + w.phase) % (2 * half)) + 2 * half) % (2 * half)
   const back = u >= half
@@ -30,7 +43,10 @@ export function walkerPose(w: Walker, t: number, out: WalkerPose = { x: 0, z: 0,
   // Standing at the end of a leg: turn round during the last moments of the rest.
   const r = u - leg
   out.yaw = r > 0 ? yaw + Math.PI * THREE.MathUtils.smoothstep(r, w.rest - TURN, w.rest) : yaw
-  out.lift = r < 0 ? 0.04 * w.s * Math.abs(Math.sin((Math.PI * u * w.speed) / (STRIDE * w.s))) : 0
+  // A whole number of steps per leg, so the feet are together where the walker stops.
+  const step = Math.sin(Math.PI * Math.max(1, Math.round((GAIT * len) / (Math.PI * w.s))) * f)
+  out.swing = SWING * step
+  out.lift = BOB * w.s * Math.abs(step)
   return out
 }
 
@@ -47,41 +63,77 @@ export function sidewalkLines(exits: RoadExit[], len: number): WalkLine[] {
 }
 
 /**
- * `count` walkers spread over both sides of `lines` (too short ones are skipped). Where a lane crosses a sidewalk, its
- * stretch simply carries on across.
+ * `count` walkers spread over both sides of `lines` (too short ones are skipped). People sharing a side pace parts of
+ * it of their own, a body apart, as two could not pass on a sidewalk. Where a lane crosses a sidewalk, its part
+ * simply carries on across.
  */
 export function planWalkers(lines: WalkLine[], count: number, s: number, rng: () => number): Walker[] {
-  const stretches = lines.filter((l) => Math.abs(l.b - l.a) >= 4).flatMap((l) => [-1, 1].map((side) => ({ l, at: l.at + side * l.offset })))
+  const sides = lines.filter((l) => Math.abs(l.b - l.a) >= 4).flatMap((l) => [-1, 1].map((side) => ({ l, at: l.at + side * l.offset })))
   const walkers: Walker[] = []
-  for (let i = 0; i < count && stretches.length > 0; i++) {
-    const { l, at: base } = stretches[i % stretches.length]
-    // People sharing a stretch keep to different parts of its width, so they pass each other.
-    const at = base + ((Math.floor(i / stretches.length) % 3) - 1) * 0.42
-    const ends = l.axis === 'z' ? { x0: at, z0: l.a, x1: at, z1: l.b } : { x0: l.a, z0: at, x1: l.b, z1: at }
-    const speed = (0.5 + 0.22 * rng()) * s
+  for (let i = 0; i < count && sides.length > 0; i++) {
+    const j = i % sides.length
+    const { l, at } = sides[j]
+    const n = Math.ceil((count - j) / sides.length) // people on this side
+    const k = Math.floor(i / sides.length)
+    const part = (l.b - l.a) / n
+    const gap = Math.sign(part) * (BODY * s + 0.3) / 2
+    const [p0, p1] = [l.a + part * k + gap, l.a + part * (k + 1) - gap]
+    const ends = l.axis === 'z' ? { x0: at, z0: p0, x1: at, z1: p1 } : { x0: p0, z0: at, x1: p1, z1: at }
+    const speed = (0.8 + 0.3 * rng()) * s
     const rest = 1.5 + 3 * rng()
-    const leg = Math.abs(l.b - l.a) / speed
-    walkers.push({ ...ends, y: l.y, speed, rest, phase: rng() * 2 * (leg + rest), s, shirt: Math.floor(rng() * PAL.bgShirt.length) })
+    const leg = Math.abs(p1 - p0) / speed
+    walkers.push({
+      ...ends, y: l.y, speed, rest, phase: rng() * 2 * (leg + rest), s,
+      shirt: Math.floor(rng() * PAL.bgShirt.length), pants: Math.floor(rng() * PAL.bgPants.length), skin: Math.floor(rng() * SKINS.length),
+    })
   }
   return walkers
 }
 
-/** The walkers of one plan as two instanced meshes (shirts tinted per person, the rest as drawn); pose every frame. */
+/** The walkers of one plan as instanced copies of the town's people: torso, head, arms and legs, posed every frame. */
 export class WalkerMeshes {
   readonly group = new THREE.Group()
+  private readonly torsos: THREE.InstancedMesh
+  private readonly heads: THREE.InstancedMesh
+  private readonly arms: THREE.InstancedMesh // two per walker: left, then right
+  private readonly legs: THREE.InstancedMesh
   private readonly meshes: THREE.InstancedMesh[]
   // Scratch objects, reused every frame.
+  private readonly body = new THREE.Matrix4()
+  private readonly joint = new THREE.Matrix4()
   private readonly m = new THREE.Matrix4()
   private readonly q = new THREE.Quaternion()
   private readonly p = new THREE.Vector3()
-  private readonly one = new THREE.Vector3(1, 1, 1)
+  private readonly size = new THREE.Vector3()
   private readonly up = new THREE.Vector3(0, 1, 0)
-  private readonly pose: WalkerPose = { x: 0, z: 0, yaw: 0, lift: 0 }
+  private readonly pose: WalkerPose = { x: 0, z: 0, yaw: 0, lift: 0, swing: 0 }
 
-  constructor(private readonly walkers: Walker[], s: number, mat: THREE.Material, shirt: (w: Walker) => THREE.Color) {
-    const { shirts, rest } = personGeometry(s)
-    this.meshes = [new THREE.InstancedMesh(shirts, mat, walkers.length), new THREE.InstancedMesh(rest, mat, walkers.length)]
-    walkers.forEach((w, i) => this.meshes[0].setColorAt(i, shirt(w)))
+  constructor(private readonly walkers: Walker[], mat: THREE.Material) {
+    // The outskirts' material reads vertex colours and `sway` (0: people stand still in the wind).
+    const parts = new PersonParts()
+    const white = new THREE.Color(1, 1, 1)
+    const head = parts.head(0, HAIR)
+    head.setAttribute('sway', new THREE.BufferAttribute(new Float32Array(head.getAttribute('position').count), 1))
+    const n = walkers.length
+    this.torsos = new THREE.InstancedMesh(paint(parts.torso, white), mat, n)
+    this.heads = new THREE.InstancedMesh(head, mat, n)
+    this.arms = new THREE.InstancedMesh(paint(parts.arm, white), mat, 2 * n)
+    this.legs = new THREE.InstancedMesh(paint(parts.leg, white), mat, 2 * n)
+    this.meshes = [this.torsos, this.heads, this.arms, this.legs]
+    // Clothes are tinted per person; heads are built with the lightest skin and tinted to the person's own.
+    const light = new THREE.Color(SKINS[0])
+    const c = new THREE.Color()
+    walkers.forEach((w, i) => {
+      c.set(PAL.bgShirt[w.shirt])
+      this.torsos.setColorAt(i, c)
+      this.arms.setColorAt(2 * i, c)
+      this.arms.setColorAt(2 * i + 1, c)
+      c.set(PAL.bgPants[w.pants])
+      this.legs.setColorAt(2 * i, c)
+      this.legs.setColorAt(2 * i + 1, c)
+      c.set(SKINS[w.skin])
+      this.heads.setColorAt(i, c.setRGB(c.r / light.r, c.g / light.g, c.b / light.b))
+    })
     for (const mesh of this.meshes) {
       mesh.frustumCulled = false
       this.group.add(mesh)
@@ -93,66 +145,20 @@ export class WalkerMeshes {
     for (let i = 0; i < this.walkers.length; i++) {
       const w = this.walkers[i]
       const pose = walkerPose(w, t, this.pose)
-      this.m.compose(this.p.set(pose.x, w.y + pose.lift, pose.z), this.q.setFromAxisAngle(this.up, pose.yaw), this.one)
-      for (const mesh of this.meshes) mesh.setMatrixAt(i, this.m)
+      this.body.compose(this.p.set(pose.x, w.y + pose.lift, pose.z), this.q.setFromAxisAngle(this.up, pose.yaw), this.size.setScalar(w.s))
+      this.torsos.setMatrixAt(i, this.body)
+      this.place(this.heads, i, 0, JOINTS.neck, 0)
+      // Arms swing against the legs, as in the town (person.ts).
+      this.place(this.arms, 2 * i, -JOINTS.shoulderX, JOINTS.shoulder, -0.8 * pose.swing)
+      this.place(this.arms, 2 * i + 1, JOINTS.shoulderX, JOINTS.shoulder, 0.8 * pose.swing)
+      this.place(this.legs, 2 * i, -JOINTS.hipX, JOINTS.hip, pose.swing)
+      this.place(this.legs, 2 * i + 1, JOINTS.hipX, JOINTS.hip, -pose.swing)
     }
     for (const mesh of this.meshes) mesh.instanceMatrix.needsUpdate = true
   }
-}
 
-/** A person about half the height of the town's people, feet at the origin, facing +Z: shirt and arms, then the rest. */
-function personGeometry(scale: number): { shirts: THREE.BufferGeometry; rest: THREE.BufferGeometry } {
-  const s = 1.45 * scale // a little over life size next to the cars, so they read from the default view
-  const shirts = new Boxes()
-  const rest = new Boxes()
-  const white = new THREE.Color(1, 1, 1)
-  const [skin, hair, legs] = PAL.bgPerson.map((h) => new THREE.Color(h))
-  for (const x of [-0.045, 0.045]) rest.box(x * s, 0, 0, 0.075 * s, 0.3 * s, 0.085 * s, legs)
-  shirts.box(0, 0.29 * s, 0, 0.2 * s, 0.25 * s, 0.12 * s, white)
-  for (const x of [-0.125, 0.125]) shirts.box(x * s, 0.31 * s, 0, 0.05 * s, 0.22 * s, 0.075 * s, white)
-  rest.box(0, 0.545 * s, 0, 0.13 * s, 0.13 * s, 0.13 * s, skin)
-  rest.box(0, 0.665 * s, -0.005 * s, 0.145 * s, 0.045 * s, 0.145 * s, hair)
-  rest.box(0, 0.58 * s, -0.07 * s, 0.145 * s, 0.09 * s, 0.03 * s, hair)
-  return { shirts: shirts.build(), rest: rest.build() }
-}
-
-/** Vertex-coloured boxes (no bottom faces), with the attributes the outskirts' materials read (`sway` stays 0). */
-class Boxes {
-  private readonly pos: number[] = []
-  private readonly nor: number[] = []
-  private readonly rgb: number[] = []
-  private readonly idx: number[] = []
-
-  /** (x, y, z) = bottom centre; the lower edge of the sides is a little darker. */
-  box(x: number, y: number, z: number, w: number, h: number, d: number, c: THREE.Color, foot = 0.82): void {
-    const [x0, x1, y1, z0, z1] = [x - w / 2, x + w / 2, y + h, z - d / 2, z + d / 2]
-    this.quad([x0, y1, z1, x1, y1, z1, x1, y1, z0, x0, y1, z0], 0, 1, 0, c, 1)
-    this.quad([x0, y, z1, x1, y, z1, x1, y1, z1, x0, y1, z1], 0, 0, 1, c, foot)
-    this.quad([x1, y, z0, x0, y, z0, x0, y1, z0, x1, y1, z0], 0, 0, -1, c, foot)
-    this.quad([x1, y, z1, x1, y, z0, x1, y1, z0, x1, y1, z1], 1, 0, 0, c, foot)
-    this.quad([x0, y, z0, x0, y, z1, x0, y1, z1, x0, y1, z0], -1, 0, 0, c, foot)
-  }
-
-  build(): THREE.BufferGeometry {
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3))
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3))
-    g.setAttribute('color', new THREE.Float32BufferAttribute(this.rgb, 3))
-    g.setAttribute('sway', new THREE.Float32BufferAttribute(new Array<number>(this.pos.length / 3).fill(0), 1))
-    g.setIndex(this.idx)
-    g.computeBoundingSphere()
-    return g
-  }
-
-  /** Four corners counter-clockwise seen from the front; the first two are the lower edge (shaded by `foot`). */
-  private quad(p: number[], nx: number, ny: number, nz: number, c: THREE.Color, foot: number): void {
-    const base = this.pos.length / 3
-    this.pos.push(...p)
-    for (let i = 0; i < 4; i++) {
-      const k = i < 2 ? foot : 1
-      this.nor.push(nx, ny, nz)
-      this.rgb.push(c.r * k, c.g * k, c.b * k)
-    }
-    this.idx.push(base, base + 1, base + 2, base, base + 2, base + 3)
+  /** Instance `i` of `mesh`: hung from (x, y) of the current body and turned `angle` about its X axis. */
+  private place(mesh: THREE.InstancedMesh, i: number, x: number, y: number, angle: number): void {
+    mesh.setMatrixAt(i, this.m.multiplyMatrices(this.body, this.joint.makeRotationX(angle).setPosition(x, y, 0)))
   }
 }

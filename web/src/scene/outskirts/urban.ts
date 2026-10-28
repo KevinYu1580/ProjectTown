@@ -270,8 +270,7 @@ export class Outskirts {
       }
     }
     if (plan.walkers.length > 0) {
-      const shirt = (w: (typeof plan.walkers)[number]) => tones.get(PAL.bgShirt[w.shirt], hazeAt((w.x0 + w.x1) / 2, (w.z0 + w.z1) / 2))
-      this.walkers = new WalkerMeshes(plan.walkers, s, this.mat, shirt)
+      this.walkers = new WalkerMeshes(plan.walkers, this.mat)
       content.add(this.walkers.group)
     }
     this.content = content
