@@ -42,6 +42,7 @@ final class WallpaperSnapshotter {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.activeSpaceDidChange() }
         }
+        removeObsoleteFiles()  // also while the option stays off, when nothing new is set
         if !enabled { restoreAll() }  // turned off while the app was not running
     }
 
@@ -198,10 +199,10 @@ final class WallpaperSnapshotter {
         removeObsoleteFiles()
     }
 
-    /// Keeps the current and the previous snapshot of each slot.
+    /// Keeps the current and the previous snapshot of each slot, and none of a slot without a snapshot for a week.
     private func removeObsoleteFiles() {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: Self.directory.path)) ?? []
-        for name in WallpaperSnapshotLedger.obsoleteFiles(names) {
+        for name in WallpaperSnapshotLedger.obsoleteFiles(names, now: Date()) {
             try? FileManager.default.removeItem(at: Self.directory.appendingPathComponent(name))
         }
     }

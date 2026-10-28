@@ -66,11 +66,18 @@ public struct WallpaperSnapshotLedger: Codable, Sendable, Equatable {
         Self.slot(of: url, in: directory).flatMap { originals[$0] }
     }
 
-    /// Snapshot files to delete from `fileNames`: all but the `keep` newest of each slot. Other names are never listed.
-    public static func obsoleteFiles(_ fileNames: [String], keep: Int = 2) -> [String] {
+    /// How long a slot keeps its snapshots after the newest one: a Space or display not seen for that long (or gone)
+    /// loses its files. Its original stays in the ledger, so it can still be put back.
+    public static let unusedSlotLifetime: TimeInterval = 7 * 24 * 60 * 60
+
+    /// Snapshot files to delete from `fileNames`: all but the `keep` newest of each slot, and every file of a slot whose
+    /// newest snapshot is older than `unusedSlotLifetime` at `now`. Other names are never listed.
+    public static func obsoleteFiles(_ fileNames: [String], keep: Int = 2, now: Date) -> [String] {
         let snapshots = fileNames.compactMap { name in parse(fileName: name).map { (name, $0.slot, $0.serial) } }
+        let cutoff = Int64((now.timeIntervalSince1970 - unusedSlotLifetime) * 1000)  // serials are milliseconds
         return Dictionary(grouping: snapshots, by: \.1).values.flatMap { files in
-            files.sorted { $0.2 > $1.2 }.dropFirst(keep).map(\.0)
+            let newestFirst = files.sorted { $0.2 > $1.2 }
+            return newestFirst.dropFirst(newestFirst[0].2 < cutoff ? 0 : keep).map(\.0)
         }
     }
 
