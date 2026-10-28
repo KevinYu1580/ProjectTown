@@ -647,7 +647,7 @@ function lightLevel(nowMs: number, settings: SceneSettings['dayNight']): { level
 
 `buildingStyle` 是 `"auto"` 或 §8.4 的其中一個 key。`depthOfFieldStrength` 範圍 0.25–2.0；`depthOfFieldRange` 範圍 0–0.45。
 
-`wallpaperSnapshot` 只在 Swift 端使用（不送給場景）：macOS 在切換 Space、進出指揮中心時偶爾不畫桌面層級的視窗，會閃出系統桌布。開啟時，小鎮視窗在桌面 Space 上可見約 1.5 秒後、之後每 5 分鐘、以及改變外觀的設定之後，用 `WKWebView.takeSnapshot` 截圖存成 `Wallpaper/town-<slot>-<n>.jpg`，再以 `setDesktopImageURL` 設為小鎮所在螢幕「目前 Space」的系統桌布。被遮住、暫停或調整視角時不做事。每個 Space 原本的桌布依 slot 記在 `Wallpaper/slots.json`（`WallpaperSnapshotLedger`）；關閉選項、結束 app、把小鎮移到別的螢幕時，以及之後切換到仍顯示我們截圖的 Space 時，換回原本的桌布。
+`wallpaperSnapshot` 只在 Swift 端使用（不送給場景）：macOS 在切換 Space、進出指揮中心時偶爾不畫桌面層級的視窗，會閃出系統桌布。開啟時，小鎮視窗在桌面 Space 上可見約 1.5 秒後、之後每 5 分鐘、以及改變外觀的設定之後，用 `WKWebView.takeSnapshot` 截圖存成 `Wallpaper/town-<slot>-<n>.jpg`，再以 `setDesktopImageURL` 設為小鎮所在螢幕「目前 Space」的系統桌布。被遮住、暫停或調整視角時不做事。Space 切換與遮擋的通知可能比實際切換晚到，所以設定前會直接問 WindowServer：小鎮下方在螢幕上的視窗（每個 Space 有自己的桌布視窗）必須和開始截圖時相同，而且沒有全螢幕 app 的底板蓋住小鎮；否則截圖可能被設到剛切過去的全螢幕 Space。每個 Space 原本的桌布依 slot 記在 `Wallpaper/slots.json`（`WallpaperSnapshotLedger`）；關閉選項、結束 app、把小鎮移到別的螢幕時，以及之後切換到仍顯示我們截圖的 Space 時，換回原本的桌布。`setDesktopImageURL` 只改得到目前的 Space：在全螢幕 app 裡結束 app 時，原本的桌布只會寫到那個全螢幕 Space，桌面會留著最後一張截圖，直到下次執行。截圖檔每個 slot 只留最新 2 張；超過 7 天沒有新截圖的 slot（例如拔掉的螢幕、不再使用的 Space）會刪掉全部截圖，`slots.json` 裡的原始桌布則保留，之後仍能換回。每次設定截圖後和 app 啟動時各清一次。
 
 ### 9.2 設定視窗（SwiftUI，`Settings` scene 或獨立 `Window`，約 640×480）
 

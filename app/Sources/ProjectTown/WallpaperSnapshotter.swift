@@ -42,6 +42,7 @@ final class WallpaperSnapshotter {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.activeSpaceDidChange() }
         }
+        removeObsoleteFiles()  // also while the option stays off, when nothing new is set
         if !enabled { restoreAll() }  // turned off while the app was not running
     }
 
@@ -131,6 +132,11 @@ final class WallpaperSnapshotter {
         let workspace = NSWorkspace.shared
         guard enabled, active, let screen = window.screen, let current = workspace.desktopImageURL(for: screen) else { return }
         let generation = self.generation
+        let space = spaceAround()
+        guard !space.fullScreen else {
+            Self.log.debug("Skipped a snapshot: a full-screen Space is current")
+            return
+        }
 
         let image: NSImage
         do {
@@ -173,6 +179,13 @@ final class WallpaperSnapshotter {
             try? FileManager.default.removeItem(at: file)
             return
         }
+        // `setDesktopImageURL` changes whatever Space is current at this moment, and the notifications behind
+        // `generation` and `active` can arrive after a switch: ask the window server.
+        guard spaceAround() == space else {
+            Self.log.debug("Skipped a snapshot: the Space changed while it was taken")
+            try? FileManager.default.removeItem(at: file)
+            return
+        }
         do {
             try workspace.setDesktopImageURL(file, for: screen, options: [
                 .imageScaling: NSImageScaling.scaleProportionallyUpOrDown.rawValue,
@@ -186,12 +199,43 @@ final class WallpaperSnapshotter {
         removeObsoleteFiles()
     }
 
-    /// Keeps the current and the previous snapshot of each slot.
+    /// Keeps the current and the previous snapshot of each slot, and none of a slot without a snapshot for a week.
     private func removeObsoleteFiles() {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: Self.directory.path)) ?? []
-        for name in WallpaperSnapshotLedger.obsoleteFiles(names) {
+        for name in WallpaperSnapshotLedger.obsoleteFiles(names, now: Date()) {
             try? FileManager.default.removeItem(at: Self.directory.appendingPathComponent(name))
         }
+    }
+
+    /// What the window server shows around the town right now.
+    private struct SpaceAround: Equatable {
+        /// On-screen windows below the town: the current Space's own wallpaper window and the display backstop. The set
+        /// changes with the Space, and holds two wallpapers while a switch is under way.
+        var below: Set<Int>
+        /// A full-screen app's Space, whose backdrop covers the town. Its wallpaper is never seen, and a snapshot set
+        /// there would stay on a Space the ledger does not know.
+        var fullScreen: Bool
+    }
+
+    private func spaceAround() -> SpaceAround {
+        let id = CGWindowID(window.windowNumber)
+        func windows(_ option: CGWindowListOption) -> [[String: Any]] {
+            CGWindowListCopyWindowInfo(option, id) as? [[String: Any]] ?? []
+        }
+        func bounds(_ info: [String: Any]) -> CGRect? {
+            (info[kCGWindowBounds as String] as? NSDictionary).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) }
+        }
+        let below = Set(windows(.optionOnScreenBelowWindow).compactMap { $0[kCGWindowNumber as String] as? Int })
+        // Between the desktop and its icons, only a full-screen Space's backdrop covers the whole screen.
+        let band = Int(CGWindowLevelForKey(.desktopWindow)) + 1..<Int(CGWindowLevelForKey(.desktopIconWindow))
+        let fullScreen = windows(.optionIncludingWindow).first.flatMap(bounds).map { town in
+            windows(.optionOnScreenAboveWindow).contains { info in
+                guard let layer = info[kCGWindowLayer as String] as? Int, band.contains(layer), let rect = bounds(info)
+                else { return false }
+                return rect.contains(town)
+            }
+        } ?? false
+        return SpaceAround(below: below, fullScreen: fullScreen)
     }
 
     /// JPEG (quality 0.85) at the screen's pixel size, off the main thread.
