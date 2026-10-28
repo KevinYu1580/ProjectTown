@@ -1,10 +1,12 @@
 # ProjectTown
 
+**English** | [繁體中文](README.zh-Hant.md)
+
 A macOS live wallpaper that turns your Claude Code sessions into a tiny voxel town.
 
-![ProjectTown at night](docs/screenshots/busy-night.png)
+![ProjectTown during the day](docs/screenshots/busy-day.png)
 
-**Supported languages: 繁體中文, English**
+**Supported languages: 繁體中文, English** (the app follows your macOS language; see [Language](#language))
 
 Each project folder you add becomes a building. Each Claude Code session working in that folder becomes a little person in front of it, and what the person does shows the session's state. You can see at a glance which project needs you.
 
@@ -33,15 +35,15 @@ When a session ends, its person walks out to the road and off the map.
 
 **Day and night**
 
-![ProjectTown during the day](docs/screenshots/busy-day.png)
+![ProjectTown at night](docs/screenshots/busy-night.png)
 
 - **Real time**: follows your clock, with your own sunrise and sunset (default 06:00 and 18:00).
 - **Fixed cycle**: a full day every N minutes (5 minutes to 24 hours), with an adjustable share of daylight.
 
 **Camera**
 
-- **Fixed** (default), **Interval** (turns 90° every few minutes), or **Continuous** (a slow orbit, one turn per hour by default).
-- **Adjust View** (menu bar or Settings): rotate, zoom and pan the town right on your desktop, then save.
+- **Fixed** (default), **Rotate on a timer** (turns 90° every 10 minutes by default), or **Rotate slowly** (a slow orbit, one turn per hour by default).
+- **Adjust View** (menu bar or Settings): rotate, zoom and pan the town right on your desktop, or pick one of four preset views, then click **Done**.
 - Depth-of-field blur for the miniature look: the scenery behind the town blurs more the farther away it is, and a band along the top and the bottom of the screen blurs too, with adjustable strength (25–200%, 60% by default) and range (0–45% of the screen height, 25% by default). The town itself always stays sharp. It can be turned off.
 - **Show the town while switching desktops** (on by default): macOS sometimes shows the system wallpaper for a moment while you switch desktops or open Mission Control. With this option ProjectTown sets the system wallpaper to a recent snapshot of the town, so you see the town instead. Turning it off puts your own wallpaper back, and so does quitting, except when a full-screen app is in front: macOS then only lets ProjectTown reach that app's space, and your desktop keeps the last snapshot until ProjectTown runs again.
 
@@ -74,7 +76,54 @@ When a session ends, its person walks out to the road and off the map.
 3. In **Projects**, click **+** and pick your project folders. Each folder becomes a building. Any Claude Code session whose working directory is inside a project folder, including worktrees in subfolders, shows up there.
 4. That's it — the "Needs you" state works out of the box, no hooks or setup needed.
 
-The menu bar menu also has **Adjust View**, **Pause Rendering** and **Reload Scene**. In Settings you can change the day/night mode, camera, display, frame rate and state durations, and turn on **Launch at login**.
+The menu bar menu also has **Adjust View**, **Pause Rendering** and **Reload Scene**.
+
+## Customization
+
+Everything below is in **Open Settings…** and applies right away.
+
+**Projects**
+
+- **+** / **−**: add project folders (several at once) or remove the selected one. Drag projects in the list to change the order of the buildings in town.
+- For each project: **Name** (shown on the sign), **Color** (the building's accent and the sign color) and **Building style** (**Auto** picks one from the folder path, or choose one of the ten styles).
+
+**Appearance**
+
+| Setting | Options | Default |
+|---|---|---|
+| Day and night → Mode | **Real time** or **Fixed cycle** | Real time |
+| Sunrise / Sunset (Real time) | Any time; sunset must be after sunrise | 06:00 / 18:00 |
+| Cycle length (Fixed cycle) | 5–1440 minutes | 60 minutes |
+| Daytime share (Fixed cycle) | 10–90% | 50% |
+| Camera → Mode | **Fixed**, **Rotate on a timer**, **Rotate slowly** | Fixed |
+| Turn every (Rotate on a timer) | 1–60 minutes | 10 minutes |
+| One rotation takes (Rotate slowly) | 2–60 minutes | 60 minutes |
+| View | **Adjust View…** / **Reset View** | — |
+| Theme | **Countryside** or **City** | Countryside |
+| Depth-of-field blur | On / off | On |
+| Blur strength | 25–200% | 60% |
+| Blur range | 0–45% of the screen height | 25% |
+| Show HUD | On / off | Off |
+| Display | Any connected display | Main display |
+| FPS | 15, 30, 60 (120 is shown but not available) | 15 |
+| Show the town while switching desktops | On / off | On |
+
+**Status**
+
+| Setting | Options | Default |
+|---|---|---|
+| "Just finished" lasts | 1–240 minutes | 30 minutes |
+| Sleeping after | 10–1440 minutes, longer than "Just finished" | 120 minutes |
+| Hide session names | On / off | On |
+
+**General**
+
+- **Launch at login** (macOS may ask you to allow it in System Settings → Login Items).
+- **Pause rendering**, the same switch as in the menu bar.
+
+### Language
+
+ProjectTown has no language setting of its own: like most Mac apps, it follows macOS. It shows 繁體中文 when Traditional Chinese is your first preferred language and English otherwise. To use a different language for ProjectTown only, open System Settings → General → Language & Region → Applications, add ProjectTown and pick a language, then quit and reopen it.
 
 ## How it works
 
@@ -100,7 +149,7 @@ No hooks are needed, and ProjectTown never writes to `~/.claude`.
 - `~/.claude/sessions` is an undocumented Claude Code format; a Claude Code update may break session reading.
 - Other live-wallpaper apps draw at the same desktop level and conflict with ProjectTown. Quit them first.
 - The town is shown on one display (selectable in Settings).
-- WKWebView renders at most about 60 frames per second, so there is no 120 FPS option.
+- WKWebView renders at most about 60 frames per second, so the 120 FPS option is greyed out.
 - The app is not notarized (see [Install](#install)).
 
 ## Build from source
@@ -112,27 +161,6 @@ make app
 ```
 
 This builds the web scene, generates the Xcode project, builds a Debug app into `build/ProjectTown.app` and opens it.
-
-## Development
-
-- `make dev` starts the scene in a browser at http://localhost:5173 in **mock mode**, with fake sessions and a lil-gui control panel to switch states, time of day, camera and settings. URL parameters:
-  - `scenario`: `empty`, `single`, `busy` (default), `crowded`, `many`, `unnamed`, `gallery` (all ten building styles), `nodata` (session files unreadable)
-  - `lang`: `en` or `zh-Hant`
-  - `time`: epoch milliseconds; freezes the scene at that moment (used for reproducible screenshots)
-  - `seed`: random seed for the mock data
-  - `gui=0`: hide the control panel
-- `make check` runs every check that CI runs: typecheck, lint, unit tests (Vitest), e2e tests (Playwright), `swift test` and an Xcode build. Run it before every commit.
-- The app accepts two development environment variables: `PROJECTTOWN_WEB_URL` loads the scene from a URL (e.g. the dev server) instead of the bundle, and `PROJECTTOWN_MEASURE_RAF=1` prints the scene's measured frame rate.
-
-Project structure:
-
-```
-app/                      Swift app: wallpaper window, menu bar, settings window
-Packages/ProjectTownCore/ Swift package: session reading, state derivation, config (unit tested)
-web/                      Three.js scene (TypeScript, Vite), mock mode, tests
-docs/screenshots/         README images
-project.yml               XcodeGen project definition
-```
 
 ## Contributing
 
