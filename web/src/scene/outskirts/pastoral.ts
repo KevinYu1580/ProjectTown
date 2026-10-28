@@ -3,9 +3,10 @@
 // hedgerows, the river banks and bridges, the railway and its tunnel portals, farms and cottages, windmill towers,
 // woods, animals and the hills.
 // The river and the pond use the water material; sparse warm windows and lanterns share one additive mesh. Moving
-// parts: a train that passes now and then, windmill sails and tractors (by day). Nothing here casts shadows, is a
-// person or carries a sign: people stand for sessions and signs for projects. Moving parts follow an animation clock
-// that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs redrawing.
+// parts: a train that passes now and then, windmill sails, tractors and walkers (by day). Nothing here casts shadows
+// but the walkers (in town too), and nothing carries a sign: signs stand for projects. Moving parts follow an
+// animation clock that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs
+// redrawing.
 import * as THREE from 'three'
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
@@ -13,9 +14,10 @@ import type { TownLayout } from '../layout'
 import { PAL } from '../palette'
 import { GROUND_REACH, PLATE_H, makeWaterMaterial, type TownEdge } from '../street'
 import { makeVoxelMaterial } from '../voxel'
+import { WalkerMeshes } from './walkers'
 import {
-  BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, hillTierRadius, planOutskirts, riverX, tractorPose, trainPose,
-  type Bridge, type Cottage, type Facing, type Farm, type Field, type Hill, type OutskirtsPlan, type Rect, type TrainPose, type Tree, type Windmill,
+  BANK, COUNTRY_Y, FIELD_H, FROZEN_T, LEVEL_H, RAMP, TERRACE_Y, TRAIN, animalPose, hillTierRadius, planOutskirts, riverX, tractorPose,
+  trainPose, type Animal, type AnimalKind, type Bridge, type Cottage, type Facing, type Farm, type Field, type Hill, type OutskirtsPlan, type Rect, type TrainPose, type Tree, type Windmill,
 } from './pastoralPlan'
 
 const GROUND = COUNTRY_Y
@@ -203,6 +205,8 @@ export class Outskirts {
   private trainGlow: THREE.Mesh | null = null
   private sails: THREE.InstancedMesh | null = null
   private tractors: THREE.InstancedMesh | null = null
+  private herds: Array<{ mesh: THREE.InstancedMesh; animals: Animal[] }> = []
+  private walkers: WalkerMeshes | null = null
   private plan: OutskirtsPlan | null = null
   private t = FROZEN_T
   private level = 1
@@ -215,6 +219,7 @@ export class Outskirts {
   private readonly up = new THREE.Vector3(0, 1, 0)
   private readonly fwd = new THREE.Vector3(0, 0, 1)
   private readonly pose = { x: 0, z: 0, yaw: 0 }
+  private readonly graze = { x: 0, z: 0, yaw: 0, lift: 0 }
   private readonly trainAt: TrainPose = { head: 0, dir: 1, visible: false }
   private tractorY: number[] = []
 
@@ -272,7 +277,6 @@ export class Outskirts {
     for (const ck of plan.cottages) cottage(solid, glow, ck, plan, at((ck.x0 + ck.x1) / 2, (ck.z0 + ck.z1) / 2))
     for (const w of plan.windmills) windmill(solid, glow, w, at(w.x, w.z))
     for (const t of plan.trees) tree(solid, t, at(t.x, t.z))
-    for (const a of plan.animals) animal(solid, a, at(a.x, a.z))
     for (const bl of plan.bales) {
       const c = at(bl.x, bl.z)
       const s = bl.s
@@ -323,6 +327,20 @@ export class Outskirts {
       })
       content.add(this.tractors)
     }
+    // Grazing animals: one instanced mesh per kind; each coat is tinted and faded with distance like the land.
+    for (const kind of ['sheep', 'cow', 'pig'] as const) {
+      const animals = plan.animals.filter((a) => a.kind === kind)
+      if (animals.length === 0) continue
+      const mesh = new THREE.InstancedMesh(animalGeometry(kind, plan.scale), this.mat, animals.length)
+      mesh.frustumCulled = false
+      animals.forEach((a, i) => mesh.setColorAt(i, at(a.x, a.z)(COAT[kind][a.tone])))
+      content.add(mesh)
+      this.herds.push({ mesh, animals })
+    }
+    if (plan.walkers.length > 0) {
+      this.walkers = new WalkerMeshes(plan.walkers)
+      content.add(this.walkers.group)
+    }
     this.content = content
     this.root.add(content)
     this.poseMoving()
@@ -343,8 +361,9 @@ export class Outskirts {
     this.glowMat.color.setScalar(a)
     if (this.glow) this.glow.visible = a > 0.01
     if (this.trainGlow) this.trainGlow.visible = a > 0.01
-    // Tractors work by day.
+    // Tractors work by day; people are out by day and through dusk.
     if (this.tractors) this.tractors.visible = level > 0.35
+    if (this.walkers) this.walkers.group.visible = level > 0.3
   }
 
   update(dtMs: number): void {
@@ -389,6 +408,16 @@ export class Outskirts {
       }
       tractors.instanceMatrix.needsUpdate = true
     }
+    for (const { mesh, animals } of this.herds) {
+      for (let i = 0; i < animals.length; i++) {
+        const a = animals[i]
+        const pose = animalPose(a, t, this.graze)
+        this.m.compose(this.p.set(pose.x, a.y + pose.lift, pose.z), this.q2.setFromAxisAngle(this.up, pose.yaw), this.one)
+        mesh.setMatrixAt(i, this.m)
+      }
+      mesh.instanceMatrix.needsUpdate = true
+    }
+    this.walkers?.update(t)
   }
 
   private clear(): void {
@@ -405,6 +434,9 @@ export class Outskirts {
     this.trainGlow = null
     this.sails = null
     this.tractors = null
+    this.herds = []
+    this.walkers?.dispose()
+    this.walkers = null
   }
 }
 
@@ -1085,23 +1117,38 @@ function tractorGeometry(s: number): THREE.BufferGeometry {
   return b.build()
 }
 
-/** Sheep and cows: a body, a head on the facing side and dark legs. */
-function animal(b: Batch, a: { x: number; y: number; z: number; kind: 'sheep' | 'cow'; facing: Facing; s: number }, c: Paint): void {
-  const s = a.s
-  const L = frame(a.x, a.z, a.facing, b)
-  const sheep = a.kind === 'sheep'
+/** A sheep, cow or pig facing +Z, feet at the origin: coat parts white (each animal tints them), face and legs dark. */
+function animalGeometry(kind: AnimalKind, s: number): THREE.BufferGeometry {
+  const b = new Batch()
+  const coat = col(0xffffff)
+  if (kind === 'pig') {
+    const [len, wid, leg, tall] = [0.9 * s, 0.55 * s, 0.16 * s, 0.42 * s]
+    const shade = col(0xd4d4d4) // snout, ears, trotters and tail: a darker shade of the coat
+    b.box(0, 0, 0, wid * 0.8, leg, len * 0.7, shade)
+    b.box(0, leg, 0, wid, tall, len, coat, coat, 0.88)
+    const hy = leg + tall * 0.25
+    const hz = len / 2 + 0.11 * s
+    b.box(0, hy, hz, 0.36 * s, 0.32 * s, 0.22 * s, coat)
+    b.box(0, hy + 0.07 * s, hz + 0.14 * s, 0.17 * s, 0.13 * s, 0.07 * s, shade)
+    for (const x of [-0.11, 0.11]) b.box(x * s, hy + 0.32 * s, hz - 0.03 * s, 0.09 * s, 0.07 * s, 0.07 * s, shade)
+    b.box(0, leg + tall * 0.6, -len / 2 - 0.03 * s, 0.06 * s, 0.06 * s, 0.06 * s, shade)
+    return b.build()
+  }
+  const sheep = kind === 'sheep'
   const len = (sheep ? 0.95 : 1.6) * s
   const wid = (sheep ? 0.62 : 0.72) * s
   const leg = (sheep ? 0.22 : 0.35) * s
   const tall = (sheep ? 0.55 : 0.75) * s
-  const face = c(sheep ? PAL.bgWool[1] : PAL.bgCow[1])
-  // Local frame: `v` back from the facing side, so the head sits at v < 0.
-  L.box(0, 0, a.y, wid * 0.8, leg, len * 0.75, face)
-  const coat = sheep ? c(PAL.bgWool[0]) : c(PAL.bgCow[a.x * 13.7 % 2 < 1 ? 0 : 2])
-  L.box(0, 0, a.y + leg, wid, tall, len, coat, sheep ? c(PAL.bgWool[0], 1.04) : coat)
-  if (!sheep) L.box(0.05 * s, 0.25 * s, a.y + leg + tall, wid * 0.7, 0.02, len * 0.35, face)
-  L.box(0, -len / 2 - 0.12 * s, a.y + leg + tall * 0.45, (sheep ? 0.34 : 0.44) * s, (sheep ? 0.34 : 0.42) * s, (sheep ? 0.3 : 0.4) * s, face)
+  const face = col(sheep ? PAL.bgWool[1] : PAL.bgCow[1])
+  b.box(0, 0, 0, wid * 0.8, leg, len * 0.75, face)
+  b.box(0, leg, 0, wid, tall, len, coat)
+  if (!sheep) b.box(0.05 * s, leg + tall, -0.25 * s, wid * 0.7, 0.02, len * 0.35, face)
+  b.box(0, leg + tall * 0.45, len / 2 + 0.12 * s, (sheep ? 0.34 : 0.44) * s, (sheep ? 0.34 : 0.42) * s, (sheep ? 0.3 : 0.4) * s, face)
+  return b.build()
 }
+
+/** Coat palette per kind: an animal's `tone` indexes it. */
+const COAT: Record<AnimalKind, readonly number[]> = { sheep: PAL.bgWool, cow: PAL.bgCow, pig: PAL.bgPig }
 
 /** Trees by kind: round, cone (pine), fruit, poplar and willow, with a baked contact shadow close up. */
 function tree(b: Batch, t: Tree, c: Paint): void {

@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- People out walking: each strolls a round of its own along the town's sidewalks and zebra crossings and out of town, along the roads into the City's neighbourhood or through the gates to the farms in the Countryside (fewer there), keeping right and waiting at the kerb now and then. They look like the town's people but wear muted, greyish clothes instead of pastel ones, have no name or symbol and go indoors by night, so they are not mistaken for your sessions.
+- Pigs in some of the Countryside's pastures.
+
 ### Changed
 
 - Wallpaper snapshots of a desktop or display that has not been seen for a week are deleted, so old snapshots no longer pile up in `~/Library/Application Support/ProjectTown/Wallpaper/`.
 - The "!" bubble over a waiting person is about a third smaller, and project signs and name labels are now drawn over every status symbol (gear, "!", zZ), so a symbol never hides a name.
+- The Countryside's sheep, cows and pigs wander from spot to spot as they graze, on their own pasture or hill tier.
+- More traffic in the City: more cars on the streets and in the parking lots.
 
 ### Fixed
 

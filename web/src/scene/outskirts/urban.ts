@@ -1,9 +1,9 @@
 // Urban theme: a background neighbourhood around the town (placement in urbanPlan.ts): lanes, garden plots, houses,
 // terraces, shops, apartment blocks, workshops, a school and a church, open spaces, trees and allotments in one
 // vertex-coloured mesh that is tinted at night like the countryside, sparse warm windows in one additive mesh, and small
-// cars on the lanes (instanced). It never casts shadows, and nothing here is a person or carries a sign: people stand for
-// sessions and signs for projects. Cars follow an animation clock that only advances with dt, so a frozen scene (dt = 0)
-// always shows the same frame and never needs redrawing.
+// cars on the lanes (instanced). It never casts shadows (but its walkers do, in town too) and nothing here carries a
+// sign: signs stand for projects. Cars and walkers follow an animation clock that only advances with dt, so a frozen
+// scene (dt = 0) always shows the same frame and never needs redrawing.
 import * as THREE from 'three'
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
@@ -16,6 +16,7 @@ import {
   ASPHALT_HALF, LANE_EDGE, LANE_HALF, LANE_W, MAIN_HALF, STOREY, carPose, inHood, planOutskirts, roofTier, type CarPose, type Facing,
   type House, type OutskirtsPlan, type Pad, type Plot, type Tree,
 } from './urbanPlan'
+import { WalkerMeshes } from './walkers'
 
 const T0 = 41.3 // seconds; the frame a frozen scene shows
 const GROUND = -0.02 // block lawns: 0.03 above the plate's grass, below the road tops (y = 0)
@@ -197,6 +198,7 @@ export class Outskirts {
   private glow: THREE.Mesh | null = null
   private cars: THREE.InstancedMesh | null = null
   private lamps: THREE.InstancedMesh | null = null
+  private walkers: WalkerMeshes | null = null
   private plan: OutskirtsPlan | null = null
   private t = T0
   private level = 1
@@ -267,9 +269,14 @@ export class Outskirts {
         content.add(this.lamps)
       }
     }
+    if (plan.walkers.length > 0) {
+      this.walkers = new WalkerMeshes(plan.walkers)
+      content.add(this.walkers.group)
+    }
     this.content = content
     this.root.add(content)
     this.poseCars()
+    this.walkers?.update(this.t)
     this.setLightLevel(this.level)
     return { exits: plan.exits, glows: [], surround: (outer, props, water) => surround(outer, props, water, plan) }
   }
@@ -285,12 +292,15 @@ export class Outskirts {
     this.lampMat.color.setScalar(a)
     if (this.glow) this.glow.visible = a > 0.01
     if (this.lamps) this.lamps.visible = a > 0.01
+    // People are out by day and through dusk.
+    if (this.walkers) this.walkers.group.visible = level > 0.3
   }
 
   update(dtMs: number): void {
     if (dtMs <= 0) return
     this.t += dtMs / 1000
     this.poseCars()
+    this.walkers?.update(this.t)
   }
 
   dispose(): void {
@@ -327,6 +337,8 @@ export class Outskirts {
     this.glow = null
     this.cars = null
     this.lamps = null
+    this.walkers?.dispose()
+    this.walkers = null
   }
 
   /** One building: a baked contact shadow, then its kind's walls, roof and openings; a few lit windows glow at night. */

@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, cameraPosition, fitDistance } from '../src/scene/cameraMath'
 import { computeLayout, type TownLayout } from '../src/scene/layout'
 import {
-  BANK, CAP, CLEAR, FROZEN_T, LITE_CAP, MAX_STYLE_HEIGHT, RIPARIAN, TERRACE_W,
-  grow, hillTierRadius, inRect, overlaps, planOutskirts, riverSpan, riverX, routePoint, tractorPose, trainPose, viewReach,
+  BANK, CAP, CLEAR, COUNTRY_Y, FROZEN_T, LEVEL_H, LITE_CAP, MAX_STYLE_HEIGHT, RIPARIAN, TERRACE_W,
+  animalPose, grow, hillLevel, hillTierRadius, inRect, overlaps, planOutskirts, riverSpan, riverX, routePoint, tractorPose, trainPose, viewReach,
   type OutskirtsPlan, type Rect,
 } from '../src/scene/outskirts/pastoralPlan'
 
@@ -348,6 +348,45 @@ describe('tractors', () => {
       const b = routePoint(route, route.length)
       expect(b.x).toBeCloseTo(a.x, 6)
       expect(b.z).toBeCloseTo(a.z, 6)
+    }
+  })
+})
+
+
+describe('animals', () => {
+  it('graze inside their own pasture, or along their own hill tier, at any time', () => {
+    for (const n of [0, 6, 25]) {
+      const p = plan(n)
+      // Hills may overlap: the ground is the highest tier of any of them.
+      const ground = (x: number, z: number, inset: number): number => Math.max(0, ...p.hills.map((h) => hillLevel(h, x, z, inset)))
+      expect(p.animals.length).toBeGreaterThan(0)
+      for (const a of p.animals) {
+        const onHill = a.y > COUNTRY_Y + 1
+        const field = onHill ? undefined : p.fields.find((f) => f.crop === 'pasture' && inRect(f, a.x, a.z))
+        const level = onHill ? ground(a.x, a.z, 0) : 0
+        if (onHill) expect(a.y).toBeCloseTo(COUNTRY_Y + level * LEVEL_H, 6)
+        else expect(field, `n=${n} ${a.kind} (${a.x.toFixed(2)}, ${a.z.toFixed(2)})`).toBeDefined()
+        for (const t of [0, 1.7, FROZEN_T, 77, 333, 9999]) {
+          const { x, z } = animalPose(a, t)
+          const at = `n=${n} ${a.kind} t=${t} (${x.toFixed(2)}, ${z.toFixed(2)})`
+          if (field) expect(inRect(field, x, z, -1.2), at).toBe(true)
+          else expect(ground(x, z, 0.4) === level && ground(x, z, -0.4) === level, at).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('include pigs, and walk smoothly round their grazing spots', () => {
+    expect([0, 6, 25].some((n) => plan(n).animals.some((a) => a.kind === 'pig'))).toBe(true)
+    const moving = plan(6).animals.filter((a) => a.stops.length > 1)
+    expect(moving.length).toBeGreaterThan(plan(6).animals.length / 2)
+    for (const a of moving) {
+      let prev = animalPose(a, 0)
+      for (let t = 0.1; t < a.period + 1; t += 0.1) {
+        const q = animalPose(a, t)
+        expect(Math.hypot(q.x - prev.x, q.z - prev.z)).toBeLessThan(0.34 * a.s * 0.1 * 1.01)
+        prev = q
+      }
     }
   })
 })

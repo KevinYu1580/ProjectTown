@@ -10,7 +10,7 @@ const SHIRTS = [
   0xf4a6a6, 0xf6c58e, 0xf3e08f, 0xb9e08f, 0x8fd9b2, 0x8fd6e0,
   0x9ebcf0, 0xb7a6ee, 0xdca3e8, 0xf0a3c8, 0xcfd3d9, 0xe8b894,
 ]
-const SKINS = [0xf1c9a5, 0xe0ac86, 0xc68a62, 0x8d5a3b]
+export const SKINS = [0xf1c9a5, 0xe0ac86, 0xc68a62, 0x8d5a3b]
 const HAIRS = [0x2b2118, 0x5a3a22, 0xa0722c, 0x161616, 0x6b6b72]
 const PANTS = [0x39404f, 0x3b4a63, 0x4a4540, 0x2f3b3a]
 
@@ -25,6 +25,8 @@ const LEG = 0.6
 const TORSO = 0.74
 const HEAD = 0.78
 const HEAD_TOP = LEG + TORSO + HEAD + 0.1
+/** Where the legs, arms and head hang from (feet at the origin); the outskirts' walkers are built the same way. */
+export const JOINTS = { hipX: 0.14, hip: LEG, shoulderX: 0.37, shoulder: LEG + TORSO - 0.1, neck: LEG + TORSO }
 const LABEL_GAP = 0.12 // world units between head top and the label / bubble anchor
 const GEAR_LIFT = (GEAR_PX + 10) / LABEL_PX // label rows above a running person's gear
 const BANG_LIFT = (BUBBLE_PX + BOUNCE_PX + STAGGER_PX + 6) / LABEL_PX
@@ -176,14 +178,14 @@ export class Person {
       this.root.add(mesh)
       return mesh
     }
-    this.legL = part(parts.leg, pants, -0.14, LEG)
-    this.legR = part(parts.leg, pants, 0.14, LEG)
+    this.legL = part(parts.leg, pants, -JOINTS.hipX, JOINTS.hip)
+    this.legR = part(parts.leg, pants, JOINTS.hipX, JOINTS.hip)
     this.torso = part(parts.torso, shirt, 0, 0)
-    this.armL = part(parts.arm, shirt, -0.37, LEG + TORSO - 0.1)
-    this.armR = part(parts.arm, shirt, 0.37, LEG + TORSO - 0.1)
+    this.armL = part(parts.arm, shirt, -JOINTS.shoulderX, JOINTS.shoulder)
+    this.armR = part(parts.arm, shirt, JOINTS.shoulderX, JOINTS.shoulder)
     this.head = part(
       parts.head(hashToIndex(`${id}:skin`, SKINS.length), hashToIndex(`${id}:hair`, HAIRS.length)),
-      headMat, 0, LEG + TORSO,
+      headMat, 0, JOINTS.neck,
     )
 
     this.gear = fx.makeGear()

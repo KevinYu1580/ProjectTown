@@ -325,4 +325,9 @@ describe('cars', () => {
     expect(b.x).toBeCloseTo(a.x, 4)
     expect(b.z).toBeCloseTo(a.z, 4)
   })
+
+  it('fill a big town up to the cap', () => {
+    expect(plan(25).cars.length).toBe(CAP.cars)
+    expect(plan(25).parked.length).toBeGreaterThan(36)
+  })
 })
