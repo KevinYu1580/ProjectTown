@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The "!" bubble over a waiting person is about a third smaller, and project signs and name labels are now drawn over every status symbol (gear, "!", zZ), so a symbol never hides a name.
+
 ## [1.1.0] - 2026-10-27
 
 ### Added

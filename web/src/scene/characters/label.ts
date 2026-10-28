@@ -29,7 +29,7 @@ export class NameLabel {
     )
     this.sprite.center.set(0.5, 0)
     this.setUnit(1)
-    this.sprite.renderOrder = 4
+    this.sprite.renderOrder = 1003 // over every symbol and sign (sign.ts)
   }
 
   /** `unit` compensates a scaled parent so the pill keeps its pixel size. */
