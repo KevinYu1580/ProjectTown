@@ -1,9 +1,9 @@
 // Urban theme: a background neighbourhood around the town (placement in urbanPlan.ts): lanes, garden plots, houses,
 // terraces, shops, apartment blocks, workshops, a school and a church, open spaces, trees and allotments in one
 // vertex-coloured mesh that is tinted at night like the countryside, sparse warm windows in one additive mesh, and small
-// cars on the lanes (instanced). It never casts shadows, and nothing here is a person or carries a sign: people stand for
-// sessions and signs for projects. Cars follow an animation clock that only advances with dt, so a frozen scene (dt = 0)
-// always shows the same frame and never needs redrawing.
+// cars on the lanes (instanced). It never casts shadows (but its walkers do, in town too) and nothing here carries a
+// sign: signs stand for projects. Cars and walkers follow an animation clock that only advances with dt, so a frozen
+// scene (dt = 0) always shows the same frame and never needs redrawing.
 import * as THREE from 'three'
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
@@ -270,7 +270,7 @@ export class Outskirts {
       }
     }
     if (plan.walkers.length > 0) {
-      this.walkers = new WalkerMeshes(plan.walkers, this.mat)
+      this.walkers = new WalkerMeshes(plan.walkers)
       content.add(this.walkers.group)
     }
     this.content = content
@@ -337,6 +337,7 @@ export class Outskirts {
     this.glow = null
     this.cars = null
     this.lamps = null
+    this.walkers?.dispose()
     this.walkers = null
   }
 

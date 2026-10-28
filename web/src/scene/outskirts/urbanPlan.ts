@@ -11,7 +11,7 @@ import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../c
 import { ROAD_WIDTH, SIDEWALK_WIDTH, VERGE_W, type TownLayout } from '../layout'
 import { PAL } from '../palette'
 import type { RoadExit } from '../street'
-import { planWalkers, sidewalkLines, type Walker } from './walkers'
+import { exitWalks, planWalkers, townWalks, type Walker } from './walkers'
 
 const DEG = Math.PI / 180
 /** Tallest building style (the clock tower, 18.8) rounded up: the view is sized for the tallest possible town. */
@@ -110,7 +110,7 @@ export interface OutskirtsPlan {
   routes: Route[]
   cars: Car[]
   parked: ParkedCar[]
-  walkers: Walker[] // people on the sidewalks of the town's roads, outside the town
+  walkers: Walker[] // people on the town's sidewalks and on those of its roads out here
 }
 
 /**
@@ -443,7 +443,11 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
       { axis: 'x', at: z, from, to, walks: openSpans(from, to, laneXs, LANE_W / 2), tinted: true }
     ))),
   ]
-  const walkers = planWalkers(sidewalkLines(exits, Math.min(60, Math.max(24, 0.4 * reach))), cap.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${cols}x${rows}`)))
+  // People walk the town's sidewalks and crossings, and those of its roads out into the neighbourhood (crossing over
+  // at the far end).
+  const walks = townWalks(layout)
+  walks.segs.push(...exitWalks(exits, bounds, Math.min(60, Math.max(24, 0.4 * reach)), s, 'cross'))
+  const walkers = planWalkers(walks, cap.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${cols}x${rows}`)))
   return { lite: opts.lite, scale: s, reach, plate, hood, lanes, mains, exits, blocks, plots, pads, houses, trees, pond, routes, cars, parked, walkers }
 }
 

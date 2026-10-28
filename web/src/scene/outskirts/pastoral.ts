@@ -3,9 +3,10 @@
 // hedgerows, the river banks and bridges, the railway and its tunnel portals, farms and cottages, windmill towers,
 // woods, animals and the hills.
 // The river and the pond use the water material; sparse warm windows and lanterns share one additive mesh. Moving
-// parts: a train that passes now and then, windmill sails and tractors (by day). Nothing here casts shadows, is a
-// person or carries a sign: people stand for sessions and signs for projects. Moving parts follow an animation clock
-// that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs redrawing.
+// parts: a train that passes now and then, windmill sails, tractors and walkers (by day). Nothing here casts shadows
+// but the walkers (in town too), and nothing carries a sign: signs stand for projects. Moving parts follow an
+// animation clock that only advances with dt, so a frozen scene (dt = 0) always shows the same frame and never needs
+// redrawing.
 import * as THREE from 'three'
 import { fnv1a32 } from '../../util/hash'
 import { createRng } from '../../util/prng'
@@ -337,7 +338,7 @@ export class Outskirts {
       this.herds.push({ mesh, animals })
     }
     if (plan.walkers.length > 0) {
-      this.walkers = new WalkerMeshes(plan.walkers, this.mat)
+      this.walkers = new WalkerMeshes(plan.walkers)
       content.add(this.walkers.group)
     }
     this.content = content
@@ -434,6 +435,7 @@ export class Outskirts {
     this.sails = null
     this.tractors = null
     this.herds = []
+    this.walkers?.dispose()
     this.walkers = null
   }
 }

@@ -9,7 +9,7 @@ import { createRng } from '../../util/prng'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, fitDistance } from '../cameraMath'
 import { VERGE_W, type TownLayout } from '../layout'
 import type { RoadExit } from '../street'
-import { planWalkers, type WalkLine, type Walker } from './walkers'
+import { exitWalks, planWalkers, townWalks, type WalkSeg, type Walker } from './walkers'
 
 const DEG = Math.PI / 180
 /** Tallest building style (the clock tower, 18.8) rounded up: the view is sized for the tallest possible town. */
@@ -122,7 +122,7 @@ export interface OutskirtsPlan {
   animals: Animal[]
   bales: Bale[]
   tractors: Tractor[]
-  walkers: Walker[] // people on the dirt lanes from the gates
+  walkers: Walker[] // people on the town's sidewalks and out along the lanes from the gates
   glows: Array<{ x: number; z: number }> // firefly spots over the river and the pond
 }
 
@@ -685,13 +685,38 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     }
     Object.assign(g.a, grazingRound(g.a, ok, createRng(fnv1a32(`graze:${opts.seed}:${g.a.x.toFixed(2)},${g.a.z.toFixed(2)}`))))
   }
-  // People walk the flat of the dirt lanes from the gates (not their ramps), a little either side of the middle.
-  const laneLines = lanes.map((l): WalkLine => {
-    const alongX = l.axis === 'x'
-    const a = (alongX ? l.x0 : l.z0) + (l.ramp === 'x0' || l.ramp === 'z0' ? RAMP : 0) + 0.5
-    const b = (alongX ? l.x1 : l.z1) - (l.ramp === 'x1' || l.ramp === 'z1' ? RAMP : 0) - 0.5
-    return { axis: l.axis, at: alongX ? (l.z0 + l.z1) / 2 : (l.x0 + l.x1) / 2, a, b, offset: 0.6 * k, y: COUNTRY_Y + 0.03 }
+  // The gate roads across the terrace (street.ts draws them).
+  const exits = gates.map((g): RoadExit => {
+    if (g.axis === 'z') return { axis: 'z', at: g.x, from: b.maxZ, to: t.z1, walks: [[b.maxZ, t.z1]], tinted: false }
+    const [from, to] = g.x < 0 ? [t.x0, b.minX] : [b.maxX, t.x1]
+    return { axis: 'x', at: g.z, from, to, walks: [[from, to]], tinted: false }
   })
+  // People walk the town's sidewalks and out through the gates: along a gate road's sidewalks, onto the middle of the
+  // road at the gate, down the ramp (or over the bridge) and along the lane to its farm, a little right of the middle.
+  const walks = townWalks(layout)
+  const out: WalkSeg[] = []
+  const laneEnds: Array<{ x: number; z: number }> = [] // at the farms: someone always walks out there
+  exits.forEach((e, i) => {
+    const l = lanes[i]
+    const [near, edge] = Math.abs(e.from) < Math.abs(e.to) ? [e.from, e.to] : [e.to, e.from]
+    const dir = Math.sign(edge - near)
+    const [l0, l1] = l.axis === 'x' ? [l.x0, l.x1] : [l.z0, l.z1]
+    const lane = COUNTRY_Y + 0.03
+    // Points along the road line (along, height), from just inside the gate; the east gate leads onto the road bridge.
+    const path = l.ramp ? [[edge - dir * 0.6, 0], [edge, 0], [edge + dir * RAMP, lane]] : [[edge - dir * 0.6, 0], [edge, 0.02], [road.x1 - RAMP, 0.02], [road.x1, lane]]
+    path.push([(dir > 0 ? l1 : l0) - dir * 0.5, lane])
+    const end = path[path.length - 1][0]
+    laneEnds.push(e.axis === 'z' ? { x: e.at, z: end } : { x: end, z: e.at })
+    out.push(...exitWalks([e], b, TERRACE_W - 1.8, s, 'merge'))
+    for (let j = 0; j + 1 < path.length; j++) {
+      const [a0, y0, a1, y1] = [path[j][0], path[j][1], path[j + 1][0], path[j + 1][1]]
+      out.push(e.axis === 'z' ? { x0: e.at, y0, z0: a0, x1: e.at, y1, z1: a1, side: 0.6 * k } : { x0: a0, y0, z0: e.at, x1: a1, y1, z1: e.at, side: 0.6 * k })
+    }
+  })
+  // The way out is short next to the town's sidewalks: people head for it about as often as for anywhere in town.
+  const length = (segs: WalkSeg[]): number => segs.reduce((a, g) => a + Math.hypot(g.x1 - g.x0, g.z1 - g.z0), 0)
+  const goal = (0.7 * length(walks.segs)) / length(out)
+  walks.segs.push(...out.map((g) => ({ ...g, goal })))
 
   // Caps: the trees nearest the town are the ones on screen most of the time.
   const byNear = <T extends { x: number; z: number }>(list: T[], n: number): T[] =>
@@ -704,11 +729,7 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     plate,
     terrace: t,
     gates,
-    exits: gates.map((g): RoadExit => {
-      if (g.axis === 'z') return { axis: 'z', at: g.x, from: b.maxZ, to: t.z1, walks: [[b.maxZ, t.z1]], tinted: false }
-      const [from, to] = g.x < 0 ? [t.x0, b.minX] : [b.maxX, t.x1]
-      return { axis: 'x', at: g.z, from, to, walks: [[from, to]], tinted: false }
-    }),
+    exits,
     lanes,
     river,
     bridges,
@@ -726,7 +747,7 @@ export function planOutskirts(layout: TownLayout, opts: { seed: number; lite: bo
     animals: lite ? [] : byNear(animals, CAP.animals),
     bales: lite ? [] : byNear(bales, CAP.bales),
     tractors: lite ? [] : tractors,
-    walkers: lite ? [] : planWalkers(laneLines, CAP.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${t.x0.toFixed(1)}`))),
+    walkers: lite ? [] : planWalkers(walks, CAP.walkers, s, createRng(fnv1a32(`walkers:${opts.seed}:${t.x0.toFixed(1)}`)), laneEnds),
     glows,
   }
 }

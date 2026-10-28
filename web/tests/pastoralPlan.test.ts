@@ -3,12 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { FIT_PITCH, FOV_DEG, TARGET_HEIGHT, VIEW_SHIFT, cameraPosition, fitDistance } from '../src/scene/cameraMath'
 import { computeLayout, type TownLayout } from '../src/scene/layout'
 import {
-  BANK, CAP, CLEAR, COUNTRY_Y, FROZEN_T, LEVEL_H, LITE_CAP, MAX_STYLE_HEIGHT, RAMP, RIPARIAN, TERRACE_W,
+  BANK, CAP, CLEAR, COUNTRY_Y, FROZEN_T, LEVEL_H, LITE_CAP, MAX_STYLE_HEIGHT, RIPARIAN, TERRACE_W,
   animalPose, grow, hillLevel, hillTierRadius, inRect, overlaps, planOutskirts, riverSpan, riverX, routePoint, tractorPose, trainPose, viewReach,
   type OutskirtsPlan, type Rect,
 } from '../src/scene/outskirts/pastoralPlan'
-import { planOutskirts as planCity } from '../src/scene/outskirts/urbanPlan'
-import { BODY, walkerPose } from '../src/scene/outskirts/walkers'
 
 const COUNTS = [0, 1, 4, 6, 10, 13, 20, 25]
 const ASPECTS = [16 / 9, 16 / 10, 3 / 2]
@@ -389,41 +387,6 @@ describe('animals', () => {
         expect(Math.hypot(q.x - prev.x, q.z - prev.z)).toBeLessThan(0.34 * a.s * 0.1 * 1.01)
         prev = q
       }
-    }
-  })
-})
-
-describe('walkers', () => {
-  it('walk the flat of the lanes from the gates, fewer than in the city', () => {
-    for (const n of [1, 6, 25]) {
-      const p = plan(n)
-      expect(p.walkers.length).toBeGreaterThan(0)
-      expect(p.walkers.length).toBeLessThan(planCity(computeLayout(n), { seed: 1, lite: false }).walkers.length)
-      for (const w of p.walkers) {
-        for (const t of [0, 1.7, FROZEN_T, 333, 9999]) {
-          const { x, z } = walkerPose(w, t)
-          const at = `n=${n} t=${t} (${x.toFixed(2)}, ${z.toFixed(2)})`
-          const lane = p.lanes.find((l) => inRect(l, x, z, (-BODY / 2) * w.s)) // the whole body on the lane
-          expect(lane, at).toBeDefined()
-          const along = lane!.axis === 'x' ? x : z
-          if (lane!.ramp === 'x0' || lane!.ramp === 'z0') expect(along, at).toBeGreaterThan((lane!.axis === 'x' ? lane!.x0 : lane!.z0) + RAMP)
-          if (lane!.ramp === 'x1' || lane!.ramp === 'z1') expect(along, at).toBeLessThan((lane!.axis === 'x' ? lane!.x1 : lane!.z1) - RAMP)
-        }
-      }
-    }
-    expect(plan(6, 1, true).walkers).toEqual([])
-  })
-
-  it('keep a body apart', () => {
-    for (const n of [1, 6, 25]) {
-      const walkers = plan(n).walkers
-      let min = Infinity
-      for (let t = 0; t < 120; t += 0.25) {
-        const at = walkers.map((w) => walkerPose(w, t))
-        for (let i = 0; i < at.length; i++)
-          for (let j = i + 1; j < at.length; j++) min = Math.min(min, Math.hypot(at[i].x - at[j].x, at[i].z - at[j].z) / (BODY * walkers[i].s))
-      }
-      expect(min, `n=${n}`).toBeGreaterThanOrEqual(1)
     }
   })
 })
