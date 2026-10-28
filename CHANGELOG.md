@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Switching to a full-screen app while ProjectTown was taking a wallpaper snapshot could set the snapshot as the wallpaper of that app's space instead of the desktop's. ProjectTown now checks with the window server that the town is still on the same desktop before it sets the wallpaper.
+
 ## [1.1.0] - 2026-10-27
 
 ### Added
