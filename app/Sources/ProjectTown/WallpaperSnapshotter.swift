@@ -12,6 +12,7 @@ import os
 /// `setDesktopImageURL` changes just the current Space of a screen, so each Space's own wallpaper is remembered by slot
 /// (`WallpaperSnapshotLedger`) and put back when the option is off, on quit, and when the town moves to another display.
 /// Does nothing while the town is not visible (occluded, full-screen Space, paused, camera edit): `active` is false.
+/// The lock screen shows each display's wallpaper, so locking puts the user's own wallpapers back until unlocked.
 /// Never puts a wallpaper back on a full-screen Space, and waits while displays come and go: macOS moves Spaces between
 /// displays then, and a Space reporting one of our files is not necessarily the one we set it on.
 @MainActor
@@ -31,6 +32,7 @@ final class WallpaperSnapshotter {
     private var ledger: WallpaperSnapshotLedger
     private var enabled: Bool
     private var active = false
+    private var locked = false
     /// The next capture: soon after a change, otherwise the periodic refresh. Only exists while `live`.
     private var pending: Task<Void, Never>?
     /// Waits out a display change, then puts wallpapers back and captures again. Nothing is set meanwhile.
@@ -38,7 +40,7 @@ final class WallpaperSnapshotter {
     /// Bumped when the Space, screen or activity changes, so a capture in flight is never set on the wrong Space.
     private var generation = 0
 
-    private var live: Bool { enabled && active && screensSettling == nil }
+    private var live: Bool { enabled && active && !locked && screensSettling == nil }
 
     init(window: NSWindow, webView: WKWebView, enabled: Bool) {
         self.window = window
@@ -54,6 +56,13 @@ final class WallpaperSnapshotter {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.screensChanged() }
+        }
+        for (name, value) in [("com.apple.screenIsLocked", true), ("com.apple.screenIsUnlocked", false)] {
+            DistributedNotificationCenter.default().addObserver(
+                forName: Notification.Name(name), object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.setLocked(value) }
+            }
         }
         removeObsoleteFiles()  // also while the option stays off, when nothing new is set
         if !enabled { restoreAll() }  // turned off while the app was not running
@@ -99,6 +108,17 @@ final class WallpaperSnapshotter {
 
     // MARK: Private
 
+    private func setLocked(_ value: Bool) {
+        guard value != locked else { return }
+        locked = value
+        if locked {
+            cancel()
+            restoreAll()
+        } else if live {
+            schedule(after: Self.settleDelay)
+        }
+    }
+
     private func activeSpaceDidChange() {
         generation += 1
         guard screensSettling == nil else { return }  // Spaces still moving; `screensChanged` catches up
@@ -116,10 +136,11 @@ final class WallpaperSnapshotter {
         }
     }
 
-    /// A Space left showing our snapshot (option off, or the town is on another display now) gets its wallpaper back.
+    /// A Space left showing our snapshot (option off, screen locked, or the town is on another display now) gets its
+    /// wallpaper back.
     private func putBackOthers() {
         guard enabled || !ledger.isEmpty else { return }
-        let town = enabled ? window.screen : nil
+        let town = enabled && !locked ? window.screen : nil
         for screen in NSScreen.screens where screen != town { restore(screen) }
         if live { schedule(after: Self.settleDelay) }
     }
