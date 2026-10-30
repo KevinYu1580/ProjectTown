@@ -313,7 +313,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         guard let screen = Displays.screen(for: displayUUID) else { return }
         let previous = window.screen
         window.setFrame(screen.frame, display: true)
-        if let previous, Displays.uuid(of: previous) != Displays.uuid(of: screen) { snapshotter.townMoved(from: previous) }
+        if let previous, Displays.uuid(of: previous) != Displays.uuid(of: screen) { snapshotter.townMoved() }
     }
 
     // MARK: Dev measurement (HANDOFF §8.9)
