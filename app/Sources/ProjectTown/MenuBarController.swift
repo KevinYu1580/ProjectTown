@@ -15,11 +15,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.openSettingsWindow = showSettings
         super.init()
 
-        if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "house.fill", accessibilityDescription: "ProjectTown")
-            image?.isTemplate = true
-            button.image = image
-        }
+        statusItem.button?.image = Self.houseIcon()
 
         let menu = NSMenu()
         menu.autoenablesItems = false
@@ -70,6 +66,34 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func reloadScene() {
         wallpaper.reloadScene()
+    }
+
+    /// The app icon's isometric house (AppIcon.icon/Assets/house.svg) as a template:
+    /// solid roof and right wall, a lighter left wall, the door cut out.
+    private static func houseIcon() -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            ctx.translateBy(x: 9, y: 9)
+            ctx.scaleBy(x: 16 / 29, y: 16 / 29)
+            ctx.translateBy(x: -46, y: -53.5)
+            func fill(_ points: [(CGFloat, CGFloat)], alpha: CGFloat, blend: CGBlendMode = .normal) {
+                ctx.setBlendMode(blend)
+                ctx.setFillColor(NSColor.black.withAlphaComponent(alpha).cgColor)
+                ctx.addLines(between: points.map { CGPoint(x: $0.0, y: $0.1) })
+                ctx.fillPath()
+            }
+            fill([(46, 58), (58, 52), (58, 62), (46, 68)], alpha: 1)
+            fill([(46, 58), (58, 52), (52, 45)], alpha: 1)
+            fill([(34, 52), (46, 58), (52, 45), (40, 39)], alpha: 1)
+            fill([(34, 52), (46, 58), (46, 68), (34, 62)], alpha: 0.75)
+            let door: [(CGFloat, CGFloat)] = [(38, 59), (41, 60.5), (41, 65.5), (38, 64)]
+            fill(door, alpha: 1, blend: .clear)
+            fill(door, alpha: 0.2)
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "ProjectTown"
+        return image
     }
 
     @objc private func showAbout() {
