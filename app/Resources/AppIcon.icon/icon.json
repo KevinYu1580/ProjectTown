@@ -1,0 +1,25 @@
+{
+  "fill" : {
+    "solid" : "srgb:0.51765,0.68235,0.37255,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "house.svg",
+          "name" : "house"
+        }
+      ],
+      "translucency" : {
+        "enabled" : false,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An app icon: the town's isometric voxel house on a grass-green background, shown in Finder, the Dock and the About window instead of the generic app icon. The menu bar icon is now the same house as a template image instead of the `house.fill` symbol.
+
 ## [1.2.0] - 2026-10-28
 
 ### Added
