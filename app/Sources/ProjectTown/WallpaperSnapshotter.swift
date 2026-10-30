@@ -12,6 +12,9 @@ import os
 /// `setDesktopImageURL` changes just the current Space of a screen, so each Space's own wallpaper is remembered by slot
 /// (`WallpaperSnapshotLedger`) and put back when the option is off, on quit, and when the town moves to another display.
 /// Does nothing while the town is not visible (occluded, full-screen Space, paused, camera edit): `active` is false.
+/// The lock screen shows each display's wallpaper, so locking puts the user's own wallpapers back until unlocked.
+/// Never puts a wallpaper back on a full-screen Space, and waits while displays come and go: macOS moves Spaces between
+/// displays then, and a Space reporting one of our files is not necessarily the one we set it on.
 @MainActor
 final class WallpaperSnapshotter {
     private static let log = Logger(subsystem: "io.github.kevinyu1580.ProjectTown", category: "WallpaperSnapshotter")
@@ -21,16 +24,23 @@ final class WallpaperSnapshotter {
     /// Lets the scene draw after it became visible or changed look, and lets a Space switch settle.
     private static let settleDelay: Duration = .seconds(1.5)
     private static let refreshInterval: Duration = .seconds(300)
+    /// How long macOS gets to move Spaces between displays after one is connected, removed or rearranged.
+    private static let screensSettleDelay: Duration = .seconds(2)
 
     private let window: NSWindow
     private let webView: WKWebView
     private var ledger: WallpaperSnapshotLedger
     private var enabled: Bool
     private var active = false
-    /// The next capture: soon after a change, otherwise the periodic refresh. Only exists while enabled and active.
+    private var locked = false
+    /// The next capture: soon after a change, otherwise the periodic refresh. Only exists while `live`.
     private var pending: Task<Void, Never>?
+    /// Waits out a display change, then puts wallpapers back and captures again. Nothing is set meanwhile.
+    private var screensSettling: Task<Void, Never>?
     /// Bumped when the Space, screen or activity changes, so a capture in flight is never set on the wrong Space.
     private var generation = 0
+
+    private var live: Bool { enabled && active && !locked && screensSettling == nil }
 
     init(window: NSWindow, webView: WKWebView, enabled: Bool) {
         self.window = window
@@ -42,6 +52,18 @@ final class WallpaperSnapshotter {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.activeSpaceDidChange() }
         }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.screensChanged() }
+        }
+        for (name, value) in [("com.apple.screenIsLocked", true), ("com.apple.screenIsUnlocked", false)] {
+            DistributedNotificationCenter.default().addObserver(
+                forName: Notification.Name(name), object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.setLocked(value) }
+            }
+        }
         removeObsoleteFiles()  // also while the option stays off, when nothing new is set
         if !enabled { restoreAll() }  // turned off while the app was not running
     }
@@ -50,7 +72,7 @@ final class WallpaperSnapshotter {
         guard value != enabled else { return }
         enabled = value
         if enabled {
-            if active { schedule(after: Self.settleDelay) }
+            if live { schedule(after: Self.settleDelay) }
         } else {
             cancel()
             restoreAll()
@@ -62,7 +84,7 @@ final class WallpaperSnapshotter {
         guard value != active else { return }
         active = value
         if active {
-            if enabled { schedule(after: Self.settleDelay) }
+            if live { schedule(after: Self.settleDelay) }
         } else {
             cancel()
         }
@@ -70,14 +92,12 @@ final class WallpaperSnapshotter {
 
     /// A setting that changes what the scene draws.
     func sceneLookChanged() {
-        if enabled && active { schedule(after: Self.settleDelay) }
+        if live { schedule(after: Self.settleDelay) }
     }
 
-    /// The window moved from `previous` to another display: give `previous`'s current Space its wallpaper back.
-    func townMoved(from previous: NSScreen) {
-        generation += 1
-        if NSScreen.screens.contains(previous) { restore(previous) }
-        if enabled && active { schedule(after: Self.settleDelay) }
+    /// The window moved to another display: the previous one gets its wallpaper back once the displays settle.
+    func townMoved() {
+        screensChanged()
     }
 
     /// On quit: every screen whose current Space shows one of our snapshots gets its own wallpaper back.
@@ -88,13 +108,41 @@ final class WallpaperSnapshotter {
 
     // MARK: Private
 
+    private func setLocked(_ value: Bool) {
+        guard value != locked else { return }
+        locked = value
+        if locked {
+            cancel()
+            restoreAll()
+        } else if live {
+            schedule(after: Self.settleDelay)
+        }
+    }
+
     private func activeSpaceDidChange() {
         generation += 1
+        guard screensSettling == nil else { return }  // Spaces still moving; `screensChanged` catches up
+        putBackOthers()
+    }
+
+    private func screensChanged() {
+        cancel()
+        screensSettling?.cancel()
+        screensSettling = Task { [weak self] in
+            try? await Task.sleep(for: Self.screensSettleDelay)
+            guard !Task.isCancelled, let self else { return }
+            self.screensSettling = nil
+            self.putBackOthers()
+        }
+    }
+
+    /// A Space left showing our snapshot (option off, screen locked, or the town is on another display now) gets its
+    /// wallpaper back.
+    private func putBackOthers() {
         guard enabled || !ledger.isEmpty else { return }
-        // A Space left showing our snapshot (option off, or the town is on another display now) gets its wallpaper back.
-        let town = enabled ? window.screen : nil
+        let town = enabled && !locked ? window.screen : nil
         for screen in NSScreen.screens where screen != town { restore(screen) }
-        if enabled && active { schedule(after: Self.settleDelay) }
+        if live { schedule(after: Self.settleDelay) }
     }
 
     private func cancel() {
@@ -109,7 +157,7 @@ final class WallpaperSnapshotter {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled, let self else { return }
             await self.capture()
-            guard !Task.isCancelled, self.enabled, self.active else { return }
+            guard !Task.isCancelled, self.live else { return }
             self.schedule(after: Self.refreshInterval)
         }
     }
@@ -118,6 +166,12 @@ final class WallpaperSnapshotter {
         let workspace = NSWorkspace.shared
         guard let current = workspace.desktopImageURL(for: screen),
               let original = ledger.original(toRestore: current, in: Self.directory) else { return }
+        // A full-screen Space without a wallpaper of its own reports the desktop's, so it may well show "our" file;
+        // setting the original there would hand it some other Space's wallpaper, which then travels with the app.
+        guard !Self.fullScreenSpaceShown(on: screen) else {
+            Self.log.debug("Skipped a restore: a full-screen Space is current")
+            return
+        }
         var options: [NSWorkspace.DesktopImageOptionKey: Any] = [:]
         if let scaling = original.imageScaling { options[.imageScaling] = scaling }
         if let clipping = original.allowClipping { options[.allowClipping] = clipping }
@@ -130,7 +184,7 @@ final class WallpaperSnapshotter {
 
     private func capture() async {
         let workspace = NSWorkspace.shared
-        guard enabled, active, let screen = window.screen, let current = workspace.desktopImageURL(for: screen) else { return }
+        guard live, let screen = window.screen, let current = workspace.desktopImageURL(for: screen) else { return }
         let generation = self.generation
         let space = spaceAround()
         guard !space.fullScreen else {
@@ -175,7 +229,7 @@ final class WallpaperSnapshotter {
             return
         }
         // Still the same Space, still visible, and the user did not pick a new wallpaper meanwhile.
-        guard generation == self.generation, enabled, active, workspace.desktopImageURL(for: screen) == current else {
+        guard generation == self.generation, live, workspace.desktopImageURL(for: screen) == current else {
             try? FileManager.default.removeItem(at: file)
             return
         }
@@ -222,20 +276,34 @@ final class WallpaperSnapshotter {
         func windows(_ option: CGWindowListOption) -> [[String: Any]] {
             CGWindowListCopyWindowInfo(option, id) as? [[String: Any]] ?? []
         }
-        func bounds(_ info: [String: Any]) -> CGRect? {
-            (info[kCGWindowBounds as String] as? NSDictionary).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) }
-        }
         let below = Set(windows(.optionOnScreenBelowWindow).compactMap { $0[kCGWindowNumber as String] as? Int })
-        // Between the desktop and its icons, only a full-screen Space's backdrop covers the whole screen.
-        let band = Int(CGWindowLevelForKey(.desktopWindow)) + 1..<Int(CGWindowLevelForKey(.desktopIconWindow))
-        let fullScreen = windows(.optionIncludingWindow).first.flatMap(bounds).map { town in
-            windows(.optionOnScreenAboveWindow).contains { info in
-                guard let layer = info[kCGWindowLayer as String] as? Int, band.contains(layer), let rect = bounds(info)
-                else { return false }
-                return rect.contains(town)
-            }
+        let fullScreen = windows(.optionIncludingWindow).first.flatMap(Self.bounds).map { town in
+            Self.backdropCovers(town, among: windows(.optionOnScreenAboveWindow))
         } ?? false
         return SpaceAround(below: below, fullScreen: fullScreen)
+    }
+
+    /// Whether `screen`'s current Space is a full-screen app's.
+    private static func fullScreenSpaceShown(on screen: NSScreen) -> Bool {
+        guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
+            return false
+        }
+        let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+        return backdropCovers(CGDisplayBounds(id), among: windows)
+    }
+
+    /// Between the desktop and its icons, only a full-screen Space's backdrop covers a whole screen.
+    private static func backdropCovers(_ rect: CGRect, among windows: [[String: Any]]) -> Bool {
+        let band = Int(CGWindowLevelForKey(.desktopWindow)) + 1..<Int(CGWindowLevelForKey(.desktopIconWindow))
+        return windows.contains { info in
+            guard let layer = info[kCGWindowLayer as String] as? Int, band.contains(layer), let bounds = bounds(info)
+            else { return false }
+            return bounds.contains(rect)
+        }
+    }
+
+    private static func bounds(_ info: [String: Any]) -> CGRect? {
+        (info[kCGWindowBounds as String] as? NSDictionary).flatMap { CGRect(dictionaryRepresentation: $0 as CFDictionary) }
     }
 
     /// JPEG (quality 0.85) at the screen's pixel size, off the main thread.
