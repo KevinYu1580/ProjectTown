@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A display with a dynamic or aerial wallpaper no longer ends up with the plain macOS default wallpaper (for example after unplugging and replugging external displays). The system reports these wallpapers as the default picture, so they cannot be put back; "Show the town while switching desktops" now leaves such a display's wallpaper alone.
+
 ## [1.3.0] - 2026-10-30
 
 ### Added

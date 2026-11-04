@@ -52,6 +52,12 @@ public struct WallpaperSnapshotLedger: Codable, Sendable, Equatable {
         return parse(fileName: url.lastPathComponent)?.slot
     }
 
+    /// Whether a wallpaper the system reports can be set back from its URL. Dynamic and aerial wallpapers all report
+    /// `DefaultDesktop.heic`, and setting that file would replace them with the plain default picture.
+    public static func canRestore(_ url: URL) -> Bool {
+        url.standardizedFileURL.path != "/System/Library/CoreServices/DefaultDesktop.heic"
+    }
+
     /// The slot for the next snapshot of the Space currently showing `current`. A wallpaper that is not ours gets a new
     /// slot and is remembered as that slot's original; `isNew` tells the caller to save the ledger before setting it.
     public mutating func slot(replacing current: Original, in directory: URL) -> (slot: Int, isNew: Bool) {
