@@ -33,6 +33,12 @@ final class WallpaperSnapshotLedgerTests: XCTestCase {
         XCTAssertNil(WallpaperSnapshotLedger.slot(of: URL(string: "https://example.com/Wallpaper/town-2-10.jpg")!, in: directory))
     }
 
+    func testSystemWallpaperPlaceholderCannotBeRestored() {
+        // Dynamic and aerial wallpapers report this file; setting it back would replace them with the plain default.
+        XCTAssertFalse(WallpaperSnapshotLedger.canRestore(URL(fileURLWithPath: "/System/Library/CoreServices/DefaultDesktop.heic")))
+        XCTAssertTrue(WallpaperSnapshotLedger.canRestore(userWallpaper.url))
+    }
+
     func testForeignWallpaperGetsNewSlotAndIsRemembered() {
         var ledger = WallpaperSnapshotLedger()
         XCTAssertTrue(ledger.isEmpty)

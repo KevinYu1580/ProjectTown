@@ -185,6 +185,11 @@ final class WallpaperSnapshotter {
     private func capture() async {
         let workspace = NSWorkspace.shared
         guard live, let screen = window.screen, let current = workspace.desktopImageURL(for: screen) else { return }
+        // A dynamic or aerial wallpaper could not be put back: leave that Space alone.
+        guard WallpaperSnapshotLedger.canRestore(current) else {
+            Self.log.debug("Skipped a snapshot: the wallpaper cannot be put back")
+            return
+        }
         let generation = self.generation
         let space = spaceAround()
         guard !space.fullScreen else {
