@@ -11,6 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: SettingsWindowController?
     private var menuBar: MenuBarController?
     private var poller: Poller?
+    private var updater: Updater?
+    private let support = Support()
 
     /// An accessory app has no main menu, and AppKit routes Cmd+C/V/X/A/Z through the Edit menu's key equivalents,
     /// so without this the settings text fields ignore them. The menu bar stays hidden.
@@ -39,15 +41,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let cycleEpochMs = SystemClock().nowMs()
         let settings = SettingsStore()
         let wallpaper = WallpaperWindowController(config: settings.config, cycleEpochMs: cycleEpochMs)
-        let settingsWindow = SettingsWindowController(store: settings, wallpaper: wallpaper)
-        let menuBar = MenuBarController(wallpaper: wallpaper, showSettings: { [weak settingsWindow] in settingsWindow?.show() })
+        let updater = Updater()
+        let settingsWindow = SettingsWindowController(store: settings, wallpaper: wallpaper, updater: updater)
+        let menuBar = MenuBarController(wallpaper: wallpaper, updater: updater, showSettings: { [weak settingsWindow] in settingsWindow?.show() })
         let poller = Poller(
             config: { [settings] in settings.currentConfig() },
             onState: { [weak wallpaper] in wallpaper?.push(state: $0) }
         )
-        settings.onChange = { [weak wallpaper, weak poller] config in
+        settings.onChange = { [weak wallpaper, weak poller, weak updater] config in
             wallpaper?.apply(config: config)
             poller?.tickNow()
+            updater?.setAutomaticChecks(config.checkForUpdates)
         }
         wallpaper.onCameraSaved = { [weak settings] camera in
             if let message = settings?.update({ $0.camera.base = camera }).message {
@@ -59,8 +63,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.settingsWindow = settingsWindow
         self.menuBar = menuBar
         self.poller = poller
+        self.updater = updater
         wallpaper.show()
         poller.start()
+        updater.setAutomaticChecks(settings.config.checkForUpdates)
+        support.greetIfNeeded()
 
         #if DEBUG
         if ProcessInfo.processInfo.environment["PROJECTTOWN_OPEN_SETTINGS"] == "1" { settingsWindow.show() }

@@ -52,6 +52,12 @@ jobs:
         run: |
           ditto -c -k --keepParent build/DerivedData/Build/Products/Release/ProjectTown.app "ProjectTown-${TAG}.zip"
 
+      - name: Sign zip for in-app updates
+        env:
+          TAG: ${{ github.ref_name }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: swift scripts/update-signing.swift sign "ProjectTown-${TAG}.zip" > "ProjectTown-${TAG}.zip.sig"
+
       - name: Extract release notes
         env:
           TAG: ${{ github.ref_name }}
@@ -61,4 +67,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" "ProjectTown-${TAG}.zip" --notes-file notes.md --title "$TAG"
+        run: gh release create "$TAG" "ProjectTown-${TAG}.zip" "ProjectTown-${TAG}.zip.sig" --notes-file notes.md --title "$TAG"

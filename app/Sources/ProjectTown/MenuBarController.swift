@@ -9,9 +9,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let openSettingsWindow: () -> Void
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let pauseItem = NSMenuItem()
+    private let updater: Updater
+    private let updateItem = NSMenuItem()
 
-    init(wallpaper: WallpaperWindowController, showSettings: @escaping () -> Void) {
+    init(wallpaper: WallpaperWindowController, updater: Updater, showSettings: @escaping () -> Void) {
         self.wallpaper = wallpaper
+        self.updater = updater
         self.openSettingsWindow = showSettings
         super.init()
 
@@ -20,6 +23,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.delegate = self
+        updateItem.target = self
+        updateItem.action = #selector(installUpdate)
+        menu.addItem(updateItem)
         menu.addItem(item(String(localized: "Open Settings…"), #selector(openSettings), key: ","))
         menu.addItem(item(String(localized: "Adjust View"), #selector(adjustView)))
         pauseItem.target = self
@@ -27,15 +33,37 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(pauseItem)
         menu.addItem(item(String(localized: "Reload Scene"), #selector(reloadScene)))
         menu.addItem(.separator())
+        menu.addItem(item(String(localized: "Support ProjectTown…"), #selector(openSupport)))
         menu.addItem(item(String(localized: "About ProjectTown"), #selector(showAbout)))
         menu.addItem(.separator())
         menu.addItem(item(String(localized: "Quit ProjectTown"), #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
         statusItem.menu = menu
         refreshPauseTitle()
+        refreshUpdateItem()
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         refreshPauseTitle()
+        refreshUpdateItem()
+    }
+
+    /// Shown at the top only while a newer release is waiting.
+    private func refreshUpdateItem() {
+        if case .available(let offer) = updater.status {
+            updateItem.title = String(localized: "Update to \(offer.version) and Restart")
+            updateItem.isHidden = false
+        } else {
+            updateItem.isHidden = true
+        }
+    }
+
+    @objc private func installUpdate() {
+        guard case .available(let offer) = updater.status else { return }
+        Task { await updater.install(offer) }
+    }
+
+    @objc private func openSupport() {
+        Support.open()
     }
 
     private func item(_ title: String, _ action: Selector?, key: String = "", target: AnyObject? = nil) -> NSMenuItem {

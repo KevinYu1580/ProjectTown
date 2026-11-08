@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject var wallpaper: WallpaperWindowController
+    let updater: Updater
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +26,7 @@ struct SettingsView: View {
                     .tabItem { Label(String(localized: "Appearance"), systemImage: "paintbrush") }
                 StatusTab(store: store)
                     .tabItem { Label(String(localized: "Status"), systemImage: "waveform.path.ecg") }
-                GeneralTab(wallpaper: wallpaper)
+                GeneralTab(store: store, wallpaper: wallpaper, updater: updater)
                     .tabItem { Label(String(localized: "General"), systemImage: "gearshape") }
             }
         }

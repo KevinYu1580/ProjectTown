@@ -8,6 +8,8 @@ A macOS live wallpaper that turns your Claude Code sessions into a tiny voxel to
 
 **Supported languages: 繁體中文, English** (the app follows your macOS language; see [Language](#language))
 
+ProjectTown is free and open source. If you enjoy it, you can [donate through PayPal](https://paypal.me/kevinyu1580) ☕
+
 Each project folder you add becomes a building. Each Claude Code session working in that folder becomes a little person in front of it, and what the person does shows the session's state. You can see at a glance which project needs you.
 
 ## Features
@@ -70,6 +72,10 @@ When a session ends, its person walks out to the road and off the map.
 
    Or right-click the app in Finder and choose **Open**.
 
+### Updates
+
+You only do this once. ProjectTown checks GitHub for a new release once a day; when one is out, choose **Update to X.Y.Z and Restart** from the menu bar menu (or Settings → General). It downloads the release, checks its signature, moves the old app to the Trash and restarts, with no download or quarantine step for you. Turn off **Check for updates automatically** in Settings → General if you prefer to update by hand. Versions before 1.4.0 cannot update themselves; install 1.4.0 by hand once.
+
 ## Usage
 
 1. Open ProjectTown. A house icon appears in the menu bar; the app has no Dock icon.
@@ -77,7 +83,7 @@ When a session ends, its person walks out to the road and off the map.
 3. In **Projects**, click **+** and pick your project folders. Each folder becomes a building. Any Claude Code session whose working directory is inside a project folder, including worktrees in subfolders, shows up there.
 4. That's it — the "Needs you" state works out of the box, no hooks or setup needed.
 
-The menu bar menu also has **Adjust View**, **Pause Rendering** and **Reload Scene**.
+The menu bar menu also has **Adjust View**, **Pause Rendering**, **Reload Scene** and **Support ProjectTown…**.
 
 ## Customization
 
@@ -121,6 +127,7 @@ Everything below is in **Open Settings…** and applies right away.
 
 - **Launch at login** (macOS may ask you to allow it in System Settings → Login Items).
 - **Pause rendering**, the same switch as in the menu bar.
+- **Check for updates automatically** (on by default), with **Check Now** to look right away. See [Updates](#updates).
 
 ### Language
 
@@ -140,7 +147,7 @@ No hooks are needed, and ProjectTown never writes to `~/.claude`.
 
 ## Privacy
 
-- Everything happens on your Mac. ProjectTown makes no network connections.
+- Everything happens on your Mac. The only network connection is the update check: once a day ProjectTown asks GitHub for the latest release (`api.github.com`), and downloads it from GitHub when you choose to update. Nothing about you or your sessions is sent. Turn it off in Settings → General.
 - It reads only `~/.claude/sessions/*.json` (session ID, working directory, status, name and timestamps) and its own settings file. It never reads your conversations, prompts or transcripts, and it never writes to `~/.claude`.
 - Session names are hidden on the wallpaper by default (Settings → Status → Hide session names).
 - Settings are stored in `~/Library/Application Support/ProjectTown/config.json`. Wallpaper snapshots, and a note of the wallpaper each desktop had before, are kept in `~/Library/Application Support/ProjectTown/Wallpaper/`. Snapshots of a desktop or display that has not been seen for a week are deleted.
@@ -169,6 +176,10 @@ CI runs on GitHub Actions (`.github/workflows/ci.yml`): a `web` job (typecheck, 
 
 1. **Actions minutes quota.** Private repositories get a monthly free quota of Actions minutes (2000), and macOS runners are billed at 10x. To save minutes, the `swift` job only runs when Swift-related files change (`app/**`, `Packages/**`, `project.yml`, `Makefile`, `.github/workflows/**`).
 2. **No branch protection.** GitHub Free private repositories cannot enforce branch protection or rulesets, so "CI must pass before merge" is enforced by convention: wait for green CI before merging your own PR. Once the repository is public, branch protection on `main` will require both the `web` and `swift` checks to pass.
+
+## Support
+
+ProjectTown is free and open source, with no paid version. If it brightens your desktop, you can [donate through PayPal](https://paypal.me/kevinyu1580) to keep it growing. The same link is in the menu bar menu and in Settings → General.
 
 ## Disclaimer
 

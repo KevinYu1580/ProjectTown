@@ -289,6 +289,54 @@
         }
       }
     },
+    "Check Now" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check Now"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "立即檢查"
+          }
+        }
+      }
+    },
+    "Check for updates automatically" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check for updates automatically"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動檢查更新"
+          }
+        }
+      }
+    },
+    "Checking for updates…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Checking for updates…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在檢查更新…"
+          }
+        }
+      }
+    },
     "City" : {
       "localizations" : {
         "en" : {
@@ -349,6 +397,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "無法變更開機時自動啟動：%@"
+          }
+        }
+      }
+    },
+    "Could not check for updates. Check your internet connection and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not check for updates. Check your internet connection and try again."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法檢查更新，請確認網路連線後再試一次。"
           }
         }
       }
@@ -477,6 +541,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "螢幕"
+          }
+        }
+      }
+    },
+    "Donate with PayPal" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Donate with PayPal"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "用 PayPal 贊助"
+          }
+        }
+      }
+    },
+    "Downloading and installing the update…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading and installing the update…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下載並安裝更新…"
           }
         }
       }
@@ -769,6 +865,22 @@
         }
       }
     },
+    "Not Now" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not Now"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "以後再說"
+          }
+        }
+      }
+    },
     "Office" : {
       "localizations" : {
         "en" : {
@@ -881,6 +993,86 @@
         }
       }
     },
+    "ProjectTown cannot replace itself in this folder. Download the update from the release page instead." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown cannot replace itself in this folder. Download the update from the release page instead."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown 無法在這個資料夾裡替換自己，請改從發行頁面下載更新。"
+          }
+        }
+      }
+    },
+    "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎透過 PayPal 贊助，支持它繼續長大。"
+          }
+        }
+      }
+    },
+    "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing. The link is always in the menu bar menu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing. The link is always in the menu bar menu."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎透過 PayPal 贊助，支持它繼續長大。選單列的選單裡隨時找得到這個連結。"
+          }
+        }
+      }
+    },
+    "ProjectTown is up to date." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown is up to date."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown 已是最新版本。"
+          }
+        }
+      }
+    },
+    "ProjectTown was updated to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown was updated to %@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProjectTown 已更新到 %@"
+          }
+        }
+      }
+    },
     "Projects" : {
       "localizations" : {
         "en" : {
@@ -957,6 +1149,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "真實時間"
+          }
+        }
+      }
+    },
+    "Releases" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Releases"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "發行頁面"
           }
         }
       }
@@ -1217,6 +1425,22 @@
         }
       }
     },
+    "Support ProjectTown…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support ProjectTown…"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "贊助 ProjectTown…"
+          }
+        }
+      }
+    },
     "The blur range must be between 0% and 45%." : {
       "localizations" : {
         "en" : {
@@ -1281,6 +1505,22 @@
         }
       }
     },
+    "The downloaded update could not be verified, so it was not installed." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The downloaded update could not be verified, so it was not installed."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載的更新無法通過驗證，因此沒有安裝。"
+          }
+        }
+      }
+    },
     "The name cannot be empty." : {
       "localizations" : {
         "en" : {
@@ -1325,6 +1565,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "睡著門檻必須大於「剛完成」的持續時間（%lld 分鐘）。"
+          }
+        }
+      }
+    },
+    "The update could not be installed. Check your internet connection and try again." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The update could not be installed. Check your internet connection and try again."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法安裝更新，請確認網路連線後再試一次。"
           }
         }
       }
@@ -1377,6 +1633,38 @@
         }
       }
     },
+    "Update and Restart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update and Restart"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新並重新啟動"
+          }
+        }
+      }
+    },
+    "Update to %@ and Restart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update to %@ and Restart"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新到 %@ 並重新啟動"
+          }
+        }
+      }
+    },
     "Version" : {
       "localizations" : {
         "en" : {
@@ -1389,6 +1677,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "版本"
+          }
+        }
+      }
+    },
+    "Version %@ is available." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %@ is available."
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有新版本 %@。"
           }
         }
       }
@@ -1421,6 +1725,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "倉庫"
+          }
+        }
+      }
+    },
+    "Welcome to ProjectTown" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welcome to ProjectTown"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "歡迎使用 ProjectTown"
+          }
+        }
+      }
+    },
+    "What’s new" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What’s new"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更新內容"
           }
         }
       }
