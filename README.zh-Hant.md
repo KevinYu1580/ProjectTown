@@ -172,10 +172,11 @@ make app
 
 ## 參與貢獻
 
-CI 跑在 GitHub Actions（`.github/workflows/ci.yml`）：`web` job（typecheck、lint、單元測試、e2e）與 `swift` job（`swift test`、`xcodegen`、`xcodebuild build`）。repo 為 private 期間有兩項限制：
+變更只能透過 pull request 進入 `main`，不能直接推送。開 PR 前請先跑 `make check`。
 
-1. **Actions 分鐘額度。** private repo 每月有 Actions 免費額度（2000 分鐘），macOS runner 以 10 倍計費。為了省額度，`swift` job 只在 Swift 相關檔案變更時執行（`app/**`、`Packages/**`、`project.yml`、`Makefile`、`.github/workflows/**`）。
-2. **沒有分支保護。** GitHub Free 的 private repo 無法強制分支保護或 ruleset，所以「CI 通過才能 merge」靠慣例執行：等 CI 綠燈再 merge 自己的 PR。repo 公開後，`main` 的分支保護會要求 `web` 與 `swift` 兩項檢查都通過。
+CI 跑在 GitHub Actions（`.github/workflows/ci.yml`）：`web` job（typecheck、lint、單元測試、e2e）與 `swift` job（`swift test`、`xcodegen`、`xcodebuild build`）。`swift` job 只在 Swift 相關檔案變更時執行（`app/**`、`Packages/**`、`project.yml`、`Makefile`、`.github/workflows/**`）。
+
+搬到這個 repo（2026-11-08）之前的 pull request 保存在 [docs/pull-requests-archive.md](docs/pull-requests-archive.md)。
 
 ## 贊助
 
