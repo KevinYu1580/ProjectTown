@@ -8,6 +8,8 @@
 
 **支援語言：繁體中文、English**（跟隨 macOS 語言，見[語言](#語言)）
 
+ProjectTown 完全免費且開源。如果你喜歡，歡迎[到 Ko-fi 請我喝杯咖啡](https://ko-fi.com/kevinyu1580) ☕
+
 你加入的每個專案資料夾都會變成一棟建築；在該資料夾裡工作的每個 Claude Code session 都會變成建築前的一個小人，小人在做什麼就代表 session 的狀態。哪個專案在等你，一眼就看得出來。
 
 ## 功能
@@ -70,6 +72,10 @@ session 結束時，小人會走到馬路上，離開畫面。
 
    或在 Finder 對 app 按右鍵，選擇 **打開**。
 
+### 更新
+
+上面的步驟只要做一次。ProjectTown 每天會到 GitHub 檢查一次新版本；有新版時，從 menubar 選單（或設定 → 一般）選擇 **更新到 X.Y.Z 並重新啟動**。它會下載新版、驗證簽名、把舊版移到垃圾桶並重新啟動，你不用自己下載，也不用處理隔離屬性。想手動更新的話，可以在設定 → 一般關閉 **自動檢查更新**。1.4.0 之前的版本無法自己更新，請手動安裝一次 1.4.0。
+
 ## 使用方式
 
 1. 開啟 ProjectTown。menubar 會出現房子圖示；這個 app 沒有 Dock 圖示。
@@ -77,7 +83,7 @@ session 結束時，小人會走到馬路上，離開畫面。
 3. 在 **專案** 按 **+**，選擇你的專案資料夾。每個資料夾會變成一棟建築。只要 Claude Code session 的工作目錄在專案資料夾底下（包括子資料夾裡的 worktree），就會出現在那棟建築。
 4. 這樣就好了 —「等你回應」狀態開箱即用，不需要 hooks 或任何設定。
 
-menubar 選單另有 **調整視角**、**暫停渲染** 與 **重新載入場景**。
+menubar 選單另有 **調整視角**、**暫停渲染**、**重新載入場景** 與 **贊助 ProjectTown…**。
 
 ## 客製化選項
 
@@ -121,6 +127,7 @@ menubar 選單另有 **調整視角**、**暫停渲染** 與 **重新載入場�
 
 - **開機時自動啟動**（macOS 可能要求你到 系統設定 → 登入項目 允許）。
 - **暫停渲染**，與 menubar 的開關相同。
+- **自動檢查更新**（預設開啟），也可以按 **立即檢查** 馬上查看。見[更新](#更新)。
 
 ### 語言
 
@@ -140,7 +147,7 @@ ProjectTown 每秒讀取一次 `~/.claude/sessions/*.json`。Claude Code 會為�
 
 ## 隱私
 
-- 一切都在你的 Mac 上進行。ProjectTown 不做任何網路連線。
+- 一切都在你的 Mac 上進行。唯一的網路連線是檢查更新：ProjectTown 每天向 GitHub 查詢一次最新版本（`api.github.com`），你選擇更新時才從 GitHub 下載。不會傳送任何關於你或你的 session 的資料。可在設定 → 一般關閉。
 - 只讀取 `~/.claude/sessions/*.json`（session ID、工作目錄、狀態、名稱與時間戳記）和自己的設定檔。從不讀取你的對話、提示或逐字紀錄，也從不寫入 `~/.claude`。
 - 桌布上的 session 名稱預設隱藏（設定 → 狀態 → 隱藏 session 名稱）。
 - 設定存放在 `~/Library/Application Support/ProjectTown/config.json`。桌布截圖，以及每個桌面原本桌布的紀錄，存放在 `~/Library/Application Support/ProjectTown/Wallpaper/`。超過一週沒出現的桌面或螢幕，其截圖會被刪除。
@@ -169,6 +176,10 @@ CI 跑在 GitHub Actions（`.github/workflows/ci.yml`）：`web` job（typecheck
 
 1. **Actions 分鐘額度。** private repo 每月有 Actions 免費額度（2000 分鐘），macOS runner 以 10 倍計費。為了省額度，`swift` job 只在 Swift 相關檔案變更時執行（`app/**`、`Packages/**`、`project.yml`、`Makefile`、`.github/workflows/**`）。
 2. **沒有分支保護。** GitHub Free 的 private repo 無法強制分支保護或 ruleset，所以「CI 通過才能 merge」靠慣例執行：等 CI 綠燈再 merge 自己的 PR。repo 公開後，`main` 的分支保護會要求 `web` 與 `swift` 兩項檢查都通過。
+
+## 贊助
+
+ProjectTown 完全免費且開源，沒有付費版。如果它讓你的桌面多了點樂趣，歡迎[到 Ko-fi 請我喝杯咖啡](https://ko-fi.com/kevinyu1580)，支持小鎮繼續長大。menubar 選單和設定 → 一般裡也找得到這個連結。
 
 ## 免責聲明
 

@@ -141,6 +141,8 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public var depthOfFieldRange: Double
     /// Swift only: keep the system wallpaper of the town's display set to a snapshot of the town.
     public var wallpaperSnapshot: Bool
+    /// Swift only: look for a newer release on GitHub once a day.
+    public var checkForUpdates: Bool
     public var finishedWindowMinutes: Int
     public var sleepThresholdMinutes: Int
     public var dayNight: DayNightConfig
@@ -150,7 +152,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
     public init(version: Int = 1, projects: [ProjectConfig] = [], fps: Int = 15, hudVisible: Bool = false,
                 hideSessionNames: Bool = true, theme: SceneTheme = .pastoral, depthOfField: Bool = true,
                 depthOfFieldStrength: Double = 0.6, depthOfFieldRange: Double = 0.25, wallpaperSnapshot: Bool = true,
-                finishedWindowMinutes: Int = 30,
+                checkForUpdates: Bool = true, finishedWindowMinutes: Int = 30,
                 sleepThresholdMinutes: Int = 120, dayNight: DayNightConfig = DayNightConfig(),
                 camera: CameraConfig = CameraConfig(), displayUUID: String? = nil) {
         self.version = version
@@ -163,6 +165,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
         self.depthOfFieldStrength = depthOfFieldStrength
         self.depthOfFieldRange = depthOfFieldRange
         self.wallpaperSnapshot = wallpaperSnapshot
+        self.checkForUpdates = checkForUpdates
         self.finishedWindowMinutes = finishedWindowMinutes
         self.sleepThresholdMinutes = sleepThresholdMinutes
         self.dayNight = dayNight
@@ -172,7 +175,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case version, projects, fps, hudVisible, hideSessionNames, theme, depthOfField, depthOfFieldStrength, depthOfFieldRange
-        case wallpaperSnapshot
+        case wallpaperSnapshot, checkForUpdates
         case finishedWindowMinutes, sleepThresholdMinutes, dayNight, camera, displayUUID
     }
 
@@ -190,6 +193,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
             depthOfFieldStrength: try c.value(.depthOfFieldStrength, default: d.depthOfFieldStrength),
             depthOfFieldRange: try c.value(.depthOfFieldRange, default: d.depthOfFieldRange),
             wallpaperSnapshot: try c.value(.wallpaperSnapshot, default: d.wallpaperSnapshot),
+            checkForUpdates: try c.value(.checkForUpdates, default: d.checkForUpdates),
             finishedWindowMinutes: try c.value(.finishedWindowMinutes, default: d.finishedWindowMinutes),
             sleepThresholdMinutes: try c.value(.sleepThresholdMinutes, default: d.sleepThresholdMinutes),
             dayNight: try c.value(.dayNight, default: d.dayNight),
@@ -210,6 +214,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
         try c.encode(depthOfFieldStrength, forKey: .depthOfFieldStrength)
         try c.encode(depthOfFieldRange, forKey: .depthOfFieldRange)
         try c.encode(wallpaperSnapshot, forKey: .wallpaperSnapshot)
+        try c.encode(checkForUpdates, forKey: .checkForUpdates)
         try c.encode(finishedWindowMinutes, forKey: .finishedWindowMinutes)
         try c.encode(sleepThresholdMinutes, forKey: .sleepThresholdMinutes)
         try c.encode(dayNight, forKey: .dayNight)

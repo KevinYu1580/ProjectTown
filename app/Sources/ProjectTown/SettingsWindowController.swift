@@ -8,7 +8,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let store: SettingsStore
     private let wallpaper: WallpaperWindowController
 
-    init(store: SettingsStore, wallpaper: WallpaperWindowController) {
+    init(store: SettingsStore, wallpaper: WallpaperWindowController, updater: Updater) {
         self.store = store
         self.wallpaper = wallpaper
         window = NSWindow(
@@ -19,7 +19,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         super.init()
         window.title = String(localized: "ProjectTown Settings")
         window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(rootView: SettingsView(store: store, wallpaper: wallpaper))
+        window.contentViewController = NSHostingController(rootView: SettingsView(store: store, wallpaper: wallpaper, updater: updater))
         window.setContentSize(NSSize(width: 640, height: 480))
         window.center()
         window.delegate = self

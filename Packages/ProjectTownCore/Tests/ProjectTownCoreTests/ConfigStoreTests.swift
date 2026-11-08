@@ -54,13 +54,14 @@ final class ConfigStoreTests: XCTestCase {
         let json = try jsonObject(at: url)
         XCTAssertEqual(Set(json.keys), [
             "version", "projects", "fps", "hudVisible", "hideSessionNames", "theme", "depthOfField",
-            "depthOfFieldStrength", "depthOfFieldRange", "wallpaperSnapshot", "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight",
+            "depthOfFieldStrength", "depthOfFieldRange", "wallpaperSnapshot", "checkForUpdates", "finishedWindowMinutes", "sleepThresholdMinutes", "dayNight",
             "camera", "displayUUID",
         ])
         XCTAssertEqual(json["theme"] as? String, "pastoral")
         XCTAssertEqual(json["depthOfFieldStrength"] as? Double, 0.6)
         XCTAssertEqual(json["depthOfFieldRange"] as? Double, 0.25)
         XCTAssertEqual(json["wallpaperSnapshot"] as? Bool, true)
+        XCTAssertEqual(json["checkForUpdates"] as? Bool, true)
         let dayNight = try XCTUnwrap(json["dayNight"] as? [String: Any])
         XCTAssertEqual(Set(dayNight.keys), ["mode", "sunrise", "sunset", "cyclePeriodMinutes", "dayRatio"])
         XCTAssertEqual(dayNight["mode"] as? String, "realtime")

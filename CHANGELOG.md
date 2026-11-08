@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- In-app updates. Once a day ProjectTown checks GitHub for a new release; when one is out, **Update to X.Y.Z and Restart** in the menu bar menu or Settings → General downloads it, checks its signature, moves the old app to the Trash and restarts. No download or quarantine step is needed any more. **Check for updates automatically** in Settings → General turns the daily check off.
+- Ways to support ProjectTown, which stays free and open source: **Support ProjectTown…** in the menu bar menu, a Ko-fi link in Settings → General, and a short note on the first launch and after each update.
+
 ## [1.3.1] - 2026-11-04
 
 ### Fixed
