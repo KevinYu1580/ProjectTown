@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 
-/// Guards `app/Resources/Localizable.xcstrings` (HANDOFF §10). The app target has no test bundle, so these tests
+/// Guards `app/Resources/Localizable.xcstrings`. The app target has no test bundle, so these tests
 /// live here and read the repo files located through `#filePath`.
 final class LocalizationCatalogTests: XCTestCase {
     private static let repoRoot = URL(fileURLWithPath: #filePath)

@@ -59,7 +59,7 @@ public struct TownState: Codable, Sendable, Equatable {
         self.projects = projects
     }
 
-    /// `generatedAt` is ignored so a new timestamp alone never triggers a push (HANDOFF §5.6).
+    /// `generatedAt` is ignored so a new timestamp alone never triggers a push.
     public static func == (lhs: TownState, rhs: TownState) -> Bool {
         lhs.version == rhs.version && lhs.dataSourceOk == rhs.dataSourceOk && lhs.projects == rhs.projects
     }

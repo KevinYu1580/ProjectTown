@@ -3,7 +3,7 @@ const FPS_WINDOW_MS = 1000
 // On-demand mode: frames drawn after each invalidate() before the loop stops asking for animation frames.
 const DEMAND_FRAMES = 2
 
-/** Decides which rAF ticks should render for a target fps (HANDOFF §8.9). Pure; no timers. */
+/** Decides which rAF ticks should render for a target fps. Pure; no timers. */
 export class FrameThrottle {
   private interval: number
   private acc = 0

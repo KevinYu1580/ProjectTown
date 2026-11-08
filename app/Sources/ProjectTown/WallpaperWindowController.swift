@@ -4,7 +4,7 @@ import ProjectTownCore
 import WebKit
 import os
 
-/// Borderless so it has no chrome; it can only become key during the camera edit mode (HANDOFF §7.3).
+/// Borderless so it has no chrome; it can only become key during the camera edit mode.
 final class WallpaperWindow: NSWindow {
     var allowsKey = false
     override var canBecomeKey: Bool { allowsKey }
@@ -23,7 +23,7 @@ private final class WeakScriptHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
-/// Owns the desktop-level window and its WKWebView, the Swift side of the bridge (HANDOFF §6) and the pause logic (§7.2).
+/// Owns the desktop-level window and its WKWebView, the Swift side of the bridge and the pause logic.
 @MainActor
 final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessageHandler, WKNavigationDelegate {
     private static let log = Logger(subsystem: "io.github.kevinyu1580.ProjectTown", category: "WallpaperWindowController")
@@ -77,7 +77,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         webView.navigationDelegate = self
 
         window.isReleasedWhenClosed = false
-        // §7.1 acceptance (desktop icons stay above the town and clickable) needs a real-desktop check.
+        // Acceptance (desktop icons stay above the town and clickable) needs a real-desktop check.
         window.level = desktopLevel
         window.ignoresMouseEvents = true
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
@@ -139,7 +139,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         loadScene()
     }
 
-    // MARK: Camera edit (§7.3)
+    // MARK: Camera edit
 
     /// Raises the window above normal windows so it can take mouse and keyboard, then starts the scene's edit mode.
     /// The window drops back to the desktop in `endCameraEdit`, on the scene's `cameraEditClosed`.
@@ -173,7 +173,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
     // MARK: Loading and bridge
 
     private func loadScene() {
-        #if DEBUG  // Release builds only ever load the bundled scene (HANDOFF §11: no network connections).
+        #if DEBUG  // Release builds only ever load the bundled scene.
         if let raw = ProcessInfo.processInfo.environment["PROJECTTOWN_WEB_URL"], let url = URL(string: raw) {
             Self.log.notice("Loading dev URL \(raw, privacy: .public)")
             webView.load(URLRequest(url: url))
@@ -255,7 +255,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         }
     }
 
-    // MARK: Pause (§7.2)
+    // MARK: Pause
 
     private enum PauseSignal: Sendable {
         case screensAsleep(Bool), sessionResigned(Bool)
@@ -299,7 +299,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         run("window.projectTown.setPaused(\(paused))")
     }
 
-    // MARK: Screen (§7.1)
+    // MARK: Screen
 
     private func observeScreenChanges() {
         NotificationCenter.default.addObserver(
@@ -316,7 +316,7 @@ final class WallpaperWindowController: NSObject, ObservableObject, WKScriptMessa
         if let previous, Displays.uuid(of: previous) != Displays.uuid(of: screen) { snapshotter.townMoved() }
     }
 
-    // MARK: Dev measurement (HANDOFF §8.9)
+    // MARK: Dev measurement
 
     private func measureFrameRateIfRequested() {
         guard ProcessInfo.processInfo.environment["PROJECTTOWN_MEASURE_RAF"] == "1" else { return }

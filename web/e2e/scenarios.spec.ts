@@ -96,7 +96,7 @@ async function hudRows(page: Page): Promise<Array<{ name: string; dot: string; c
   );
 }
 
-/** Rows the HUD should list (HANDOFF 8.6), worked out from the state with its own glyph table. */
+/** Rows the HUD should list, worked out from the state with its own glyph table. */
 async function expectedHudRows(page: Page): Promise<Array<{ name: string; dot: string; counts: string[] }>> {
   const projects = await page.evaluate(() => window.__projectTownDebug?.getState()?.projects ?? []);
   const listed = projects.length > 8 ? projects.filter((p) => p.sessions.length > 0) : projects;

@@ -126,7 +126,7 @@ public struct CameraConfig: Codable, Sendable, Equatable {
     }
 }
 
-/// `config.json` (HANDOFF §9.1). Missing keys decode to the §9.1 defaults.
+/// `config.json`. Missing keys decode to the defaults of `init`.
 public struct AppConfig: Codable, Sendable, Equatable {
     public var version: Int
     public var projects: [ProjectConfig]
@@ -219,7 +219,7 @@ public struct AppConfig: Codable, Sendable, Equatable {
         try c.encode(sleepThresholdMinutes, forKey: .sleepThresholdMinutes)
         try c.encode(dayNight, forKey: .dayNight)
         try c.encode(camera, forKey: .camera)
-        // §9.1 shows `"displayUUID": null`, so keep the key when unset.
+        // Write `"displayUUID": null` so the key is kept when unset.
         if let displayUUID { try c.encode(displayUUID, forKey: .displayUUID) } else { try c.encodeNil(forKey: .displayUUID) }
     }
 }

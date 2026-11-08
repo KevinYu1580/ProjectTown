@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-/// Reads and writes `config.json` (HANDOFF §9.1).
+/// Reads and writes `config.json`.
 public struct ConfigStore: Sendable {
     private static let log = Logger.projectTown("ConfigStore")
 

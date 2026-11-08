@@ -1,6 +1,6 @@
 import Foundation
 
-/// The preset colour palette for new projects (HANDOFF §9.2), in fixed order.
+/// The preset colour palette for new projects, in fixed order.
 public enum ProjectPalette {
     public static let colors = ["#5B8DEF", "#F2994A", "#27AE60", "#EB5757", "#9B51E0", "#F2C94C", "#2D9CDB", "#E36FA8"]
 

@@ -164,7 +164,7 @@ export function setupGui(ctx: MockContext): void {
   const good = { sunrise: m.sunrise, sunset: m.sunset }
   const hhmm = (key: 'sunrise' | 'sunset') =>
     day.add(m, key).onFinishChange((v: string) => {
-      // Reject bad input and sunset <= sunrise (HANDOFF §8.7).
+      // Reject bad input and sunset <= sunrise.
       if (!HHMM.test(v) || toMin(m.sunset) <= toMin(m.sunrise)) {
         m[key] = good[key]
         sunriseCtl.updateDisplay()

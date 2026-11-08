@@ -3,7 +3,7 @@ import ProjectTownCore
 import os
 
 /// Features the running system cannot do. WKWebView's requestAnimationFrame measured about 58 Hz on a ProMotion
-/// display (HANDOFF §8.9, M2), so 120 FPS is disabled in the UI. Remove the entry to enable it.
+/// display, so 120 FPS is disabled in the UI. Remove the entry to enable it.
 enum DisplaySupport {
     static let unsupportedFPS: Set<Int> = [120]
 }
@@ -23,7 +23,7 @@ enum UpdateOutcome: Equatable {
     }
 }
 
-/// Owns the live `AppConfig` (HANDOFF §9.1). Every change is validated first; only a valid config is written to
+/// Owns the live `AppConfig`. Every change is validated first; only a valid config is written to
 /// `config.json`, published, and pushed to the scene (`onChange`) and the poller (`currentConfig()`).
 @MainActor
 final class SettingsStore: ObservableObject {

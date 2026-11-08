@@ -117,7 +117,7 @@ describe('cycle mode', () => {
     expect(atMin(0)).toEqual({ level: 1, phase: 'day' })
   })
 
-  it('follows the §8.7 timeline', () => {
+  it('follows the day/night timeline', () => {
     expect(atMin(27.49)).toEqual({ level: 1, phase: 'day' })
     expect(atMin(27.5)).toEqual({ level: 1, phase: 'dusk' }) // D - T
     expect(atMin(28.75)).toEqual({ level: 0.5, phase: 'dusk' })

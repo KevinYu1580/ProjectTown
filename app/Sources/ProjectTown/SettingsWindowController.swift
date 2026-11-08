@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The settings window (HANDOFF §9.2): SwiftUI in a plain `NSWindow`, brought to the front because the app is `LSUIElement`.
+/// The settings window: SwiftUI in a plain `NSWindow`, brought to the front because the app is `LSUIElement`.
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let window: NSWindow
