@@ -1,4 +1,4 @@
-// Shared contracts between the Swift host and the web scene (HANDOFF §6.3). Keep in sync with Swift Codable types.
+// Shared contracts between the Swift host and the web scene. Keep in sync with Swift Codable types.
 
 export type SessionState = 'running' | 'waiting' | 'finished' | 'idle' | 'sleeping'
 

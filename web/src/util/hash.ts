@@ -1,6 +1,6 @@
 import type { BuildingStyle } from '../types'
 
-// Order matters: Swift picks the style with the same index (HANDOFF §6.3 / §8.4).
+// Order matters: Swift picks the style with the same index.
 export const BUILDING_STYLES: readonly BuildingStyle[] = [
   'office', 'factory', 'cafe', 'bookstore', 'lab',
   'warehouse', 'radioTower', 'greenhouse', 'clockTower', 'ramenShop',

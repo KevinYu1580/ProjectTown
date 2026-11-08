@@ -1,6 +1,6 @@
 import AppKit
 
-/// Status item with a single template icon and no badge (HANDOFF §7.4).
+/// Status item with a single template icon and no badge.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
     private static let repositoryURL = URL(string: "https://github.com/KevinYu1580/ProjectTown")!

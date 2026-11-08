@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-/// `status` in `~/.claude/sessions/<pid>.json`. Unknown strings decode to `.idle` (HANDOFF §5.1).
+/// `status` in `~/.claude/sessions/<pid>.json`. Unknown strings decode to `.idle`.
 public enum SessionStatus: String, Sendable, Decodable {
     case busy, idle, waiting
 
@@ -29,7 +29,7 @@ public struct SessionFile: Decodable, Sendable, Equatable {
     public var statusUpdatedAt: Int64?
     public var waitingFor: String?
 
-    /// HANDOFF §5.4.
+    /// The newest of the status, update and start times.
     public var lastActivityAt: Int64 { statusUpdatedAt ?? updatedAt ?? startedAt ?? 0 }
 }
 

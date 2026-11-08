@@ -16,7 +16,7 @@ function el(tag: string, cls: string, text?: string, testid?: string): HTMLEleme
   return e
 }
 
-/** DOM overlay, bottom-left (HANDOFF 8.6). Re-rendered wholesale; the panel is tiny. */
+/** DOM overlay, bottom-left. Re-rendered wholesale; the panel is tiny. */
 export class Hud {
   private readonly panel = el('div', 'hud', undefined, 'hud')
 

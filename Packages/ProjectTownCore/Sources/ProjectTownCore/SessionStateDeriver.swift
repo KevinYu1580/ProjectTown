@@ -16,7 +16,7 @@ public struct DerivedSession: Sendable, Equatable {
     public var lastActivityAt: Int64
 }
 
-/// Derives the town state of each live session (HANDOFF §5.4). Remembers the previous round's
+/// Derives the town state of each live session. Remembers the previous round's
 /// states, so it must be used from a single queue.
 public final class SessionStateDeriver {
     /// A busy/idle gap longer than this means the session did work before this app started watching.

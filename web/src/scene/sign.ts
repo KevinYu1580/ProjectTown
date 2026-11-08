@@ -10,7 +10,7 @@ export interface SignContent {
   lit: boolean
 }
 
-// Order and glyphs follow HANDOFF 8.3. Colours are only for the glyph on the dark count strip.
+// Colours are only for the glyph on the dark count strip.
 const GLYPHS: Array<[SessionState, string, string]> = [
   ['running', '⚙', '#7fc4ff'],
   ['waiting', '!', '#ffd34d'],

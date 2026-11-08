@@ -17,7 +17,7 @@ describe('dictionaries', () => {
     }
   })
 
-  it('use the mandatory §10 terminology', () => {
+  it('use the mandatory terminology', () => {
     const table: Array<[keyof typeof en, string, string]> = [
       ['state.running', '執行中', 'Running'],
       ['state.waiting', '等你回應', 'Needs you'],

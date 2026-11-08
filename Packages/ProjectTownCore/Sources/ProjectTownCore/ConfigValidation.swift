@@ -1,6 +1,6 @@
 import Foundation
 
-/// Allowed ranges for user-editable settings (HANDOFF §8.8, §9.2). Shared by validation and the settings UI.
+/// Allowed ranges for user-editable settings. Shared by validation and the settings UI.
 public enum ConfigLimits {
     public static let fps = [15, 30, 60, 120]
     public static let finishedWindowMinutes = 1...240

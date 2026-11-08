@@ -1,6 +1,6 @@
 import Foundation
 
-/// Maps a session `cwd` to a configured project (HANDOFF §5.5).
+/// Maps a session `cwd` to a configured project.
 public struct ProjectMatcher: Sendable {
     /// Lowercased path components per project; nil for an empty path (matches nothing).
     private let projects: [[String]?]
