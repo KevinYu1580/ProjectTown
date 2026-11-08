@@ -47,9 +47,9 @@ struct GeneralTab: View {
                 updateRow
             }
             Section {
-                Text(String(localized: "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing."))
+                Text(String(localized: "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing."))
                     .fixedSize(horizontal: false, vertical: true)
-                Link(String(localized: "Donate with PayPal"), destination: Support.url)
+                Link(String(localized: "Support on Ko-fi"), destination: Support.url)
             }
             Section {
                 LabeledContent(String(localized: "Version")) { Text(version) }

@@ -545,22 +545,6 @@
         }
       }
     },
-    "Donate with PayPal" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Donate with PayPal"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "用 PayPal 贊助"
-          }
-        }
-      }
-    },
     "Downloading and installing the update…" : {
       "localizations" : {
         "en" : {
@@ -1009,34 +993,34 @@
         }
       }
     },
-    "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing." : {
+    "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing."
+            "value" : "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎透過 PayPal 贊助，支持它繼續長大。"
+            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎到 Ko-fi 請我喝杯咖啡，支持它繼續長大。"
           }
         }
       }
     },
-    "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing. The link is always in the menu bar menu." : {
+    "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing. The link is always in the menu bar menu." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing. The link is always in the menu bar menu."
+            "value" : "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing. The link is always in the menu bar menu."
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎透過 PayPal 贊助，支持它繼續長大。選單列的選單裡隨時找得到這個連結。"
+            "value" : "ProjectTown 完全免費且開源。如果你喜歡這座小鎮，歡迎到 Ko-fi 請我喝杯咖啡，支持它繼續長大。選單列的選單裡隨時找得到這個連結。"
           }
         }
       }
@@ -1437,6 +1421,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "贊助 ProjectTown…"
+          }
+        }
+      }
+    },
+    "Support on Ko-fi" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support on Ko-fi"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到 Ko-fi 贊助"
           }
         }
       }

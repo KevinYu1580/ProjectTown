@@ -8,7 +8,7 @@ A macOS live wallpaper that turns your Claude Code sessions into a tiny voxel to
 
 **Supported languages: 繁體中文, English** (the app follows your macOS language; see [Language](#language))
 
-ProjectTown is free and open source. If you enjoy it, you can [donate through PayPal](https://paypal.me/kevinyu1580) ☕
+ProjectTown is free and open source. If you enjoy it, you can [buy me a coffee on Ko-fi](https://ko-fi.com/kevinyu1580) ☕
 
 Each project folder you add becomes a building. Each Claude Code session working in that folder becomes a little person in front of it, and what the person does shows the session's state. You can see at a glance which project needs you.
 
@@ -179,7 +179,7 @@ CI runs on GitHub Actions (`.github/workflows/ci.yml`): a `web` job (typecheck, 
 
 ## Support
 
-ProjectTown is free and open source, with no paid version. If it brightens your desktop, you can [donate through PayPal](https://paypal.me/kevinyu1580) to keep it growing. The same link is in the menu bar menu and in Settings → General.
+ProjectTown is free and open source, with no paid version. If it brightens your desktop, you can [buy me a coffee on Ko-fi](https://ko-fi.com/kevinyu1580) to keep it growing. The same link is in the menu bar menu and in Settings → General.
 
 ## Disclaimer
 

@@ -3,7 +3,7 @@ import AppKit
 /// Donations: ProjectTown is free and open source, and asks for support in a few places but never on the wallpaper.
 @MainActor
 final class Support: NSObject {
-    static let url = URL(string: "https://paypal.me/kevinyu1580")!
+    static let url = URL(string: "https://ko-fi.com/kevinyu1580")!
     private static let lastLaunchedVersionKey = "lastLaunchedVersion"
 
     private var alert: NSAlert?
@@ -25,8 +25,8 @@ final class Support: NSObject {
         alert.messageText = last == nil
             ? String(localized: "Welcome to ProjectTown")
             : String(localized: "ProjectTown was updated to \(version)")
-        alert.informativeText = String(localized: "ProjectTown is free and open source. If you enjoy your little town, a donation through PayPal helps keep it growing. The link is always in the menu bar menu.")
-        let donateButton = alert.addButton(withTitle: String(localized: "Donate with PayPal"))
+        alert.informativeText = String(localized: "ProjectTown is free and open source. If you enjoy your little town, you can buy me a coffee on Ko-fi to keep it growing. The link is always in the menu bar menu.")
+        let donateButton = alert.addButton(withTitle: String(localized: "Support on Ko-fi"))
         let later = alert.addButton(withTitle: String(localized: "Not Now"))
         donateButton.target = self
         donateButton.action = #selector(donate)
