@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-09
+
 ### Changed
 
 - The lock screen shows the town too, instead of your own wallpaper. Locking and unlocking used to switch the wallpaper twice; now nothing changes.
