@@ -25,6 +25,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
         updateItem.target = self
         updateItem.action = #selector(installUpdate)
+        updateItem.image = NSImage(systemSymbolName: "exclamationmark.circle", accessibilityDescription: nil)
         menu.addItem(updateItem)
         menu.addItem(item(String(localized: "Open Settings…"), #selector(openSettings), key: ","))
         menu.addItem(item(String(localized: "Adjust View"), #selector(adjustView)))
@@ -49,8 +50,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     /// Shown at the top only while a newer release is waiting.
     private func refreshUpdateItem() {
-        if case .available(let offer) = updater.status {
-            updateItem.title = String(localized: "Update to \(offer.version) and Restart")
+        if case .available = updater.status {
+            updateItem.title = String(localized: "New Version Available! Install and Restart")
             updateItem.isHidden = false
         } else {
             updateItem.isHidden = true
