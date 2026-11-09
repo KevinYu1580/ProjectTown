@@ -106,4 +106,29 @@ final class WallpaperSnapshotLedgerTests: XCTestCase {
         try Data("{ nope".utf8).write(to: broken)
         XCTAssertEqual(WallpaperSnapshotLedger.load(from: broken), WallpaperSnapshotLedger())
     }
+
+    /// A Space showing the cover file gets a slot of its own, but its original lives in the store, not in the slot.
+    func testSlotTakenOverFromTheCoverFileRestoresNothing() {
+        var ledger = WallpaperSnapshotLedger(originals: [1: userWallpaper])
+        let cover = directory.appendingPathComponent("cover-D1.jpg")
+        let result = ledger.slot(replacing: .init(url: cover), in: directory)
+        XCTAssertEqual(result.slot, 2)
+        XCTAssertNil(ledger.original(toRestore: ours(2, 5), in: directory))
+        XCTAssertEqual(ledger.original(toRestore: ours(1, 5), in: directory), userWallpaper)
+    }
+
+    func testStoreOriginalsAreSavedAndOldLedgersStillLoad() throws {
+        var ledger = WallpaperSnapshotLedger(originals: [1: userWallpaper])
+        ledger.rememberStoreOriginals(["space/S1/D1": Data([1]), "display/D1": Data([2])])
+        ledger.rememberStoreOriginals(["space/S1/D1": Data([3])])
+        XCTAssertEqual(ledger.storeOriginals, ["space/S1/D1": Data([3]), "display/D1": Data([2])])
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("slots-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try ledger.save(to: url)
+        XCTAssertEqual(WallpaperSnapshotLedger.load(from: url), ledger)
+
+        try Data(#"{ "originals": {} }"#.utf8).write(to: url)
+        XCTAssertEqual(WallpaperSnapshotLedger.load(from: url), WallpaperSnapshotLedger())
+    }
 }

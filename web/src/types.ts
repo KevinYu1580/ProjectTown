@@ -77,6 +77,8 @@ export interface ProjectTownAPI {
   setCameraPreset(index: 0 | 1 | 2 | 3): void
   resetCamera(): void
   reload(): void
+  /** The scene as a JPEG data URL without names and state symbols, for the system wallpaper; null before the first frame. */
+  snapshot(): string | null
 }
 
 // Treat the defaults as read-only; copy before mutating (target is an array).

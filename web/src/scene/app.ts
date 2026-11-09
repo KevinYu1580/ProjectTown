@@ -18,6 +18,7 @@ import { RenderLoop } from './loop'
 import { Sky } from './sky'
 import { isSoftwareRenderer, rendererName } from './softwareRenderer'
 import { Street } from './street'
+import { withoutOverlays } from './overlay'
 import { VoxelBuilder, disposeGeometries, material } from './voxel'
 
 export interface TownAppOptions {
@@ -164,6 +165,22 @@ export class TownApp implements Omit<ProjectTownAPI, 'reload'> {
     this.refreshOverlay()
     this.syncCharacters()
     this.loop.invalidate()
+  }
+
+  /**
+   * The scene as a JPEG data URL with only the 3D town, without overlays (signs, name labels, state symbols), for the
+   * system wallpaper, which the lock screen shows too; the HUD is outside the canvas anyway. Drawn and read within one
+   * task and then drawn again with the overlays, so the screen never shows the town without them. Null before the
+   * first frame.
+   */
+  snapshot(): string | null {
+    if (!this.firstFrameDone) return null
+    const url = withoutOverlays(this.scene, () => {
+      this.postfx.render()
+      return this.renderer.domElement.toDataURL('image/jpeg', 0.92)
+    })
+    this.postfx.render()
+    return url
   }
 
   setPaused(paused: boolean): void {

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { DRAWN_ON_TOP } from '../postfx'
+import { markOverlay } from '../overlay'
 
 // Screen-space sprites (sizeAttenuation off) keep their pixel size at any zoom: one scale unit = PX pixels
 // at a 982 px tall viewport with the 30 degree FOV.
@@ -167,6 +168,7 @@ export class Effects {
     mat.color.setScalar(1 + 0.4 * this.night)
     this.gearMats.add(mat)
     const s = new THREE.Sprite(mat)
+    markOverlay(s)
     s.renderOrder = 5
     return s
   }
@@ -186,11 +188,14 @@ export class Effects {
     bubble.scale.set(((BUBBLE_PX * BUBBLE_W) / BUBBLE_H) * PX, BUBBLE_PX * PX, 1)
     bubble.renderOrder = 1001
     group.add(halo, bubble)
+    markOverlay(group)
     return { group, bubble, halo }
   }
 
   makeRing(): THREE.Mesh {
-    return new THREE.Mesh(this.ringGeo, this.ringMat)
+    const ring = new THREE.Mesh(this.ringGeo, this.ringMat)
+    markOverlay(ring)
+    return ring
   }
 
   setLightLevel(level: number): void {
@@ -260,6 +265,7 @@ export class Fireworks {
       size: 0.85, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
     })
     const points = new THREE.Points(geo, mat)
+    markOverlay(points)
     points.frustumCulled = false
     this.parent.add(points)
     this.items.push({ points, pos, vel, center: center.clone(), age: 0 })
@@ -330,6 +336,7 @@ export class SleepZ {
     this.sprites = ZZ_SIZE_PX.map((_, i) => {
       const map = textures[i === 0 ? 0 : 1]
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP }))
+      markOverlay(s)
       parent.add(s)
       return s
     })
