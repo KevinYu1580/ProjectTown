@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-11-09
+
 ### Changed
 
 - The menu bar item for a new release now reads **New Version Available! Install and Restart** instead of naming the version, with an exclamation mark icon. Settings → General still shows the version.
