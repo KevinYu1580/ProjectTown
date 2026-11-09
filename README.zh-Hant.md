@@ -47,7 +47,7 @@ session 結束時，小人會走到馬路上，離開畫面。
 - **固定**（預設）、**定時環繞**（預設每 10 分鐘轉 90°）或 **緩慢環繞**（緩慢繞圈，預設一小時一圈）。
 - **調整視角**（menubar 或設定）：直接在桌面上旋轉、縮放、平移小鎮，或從四個預設視角中挑一個，再按 **完成**。
 - 營造微縮模型感的景深模糊：小鎮後方的景物越遠越模糊，畫面上下兩條帶狀區域也會模糊；強度（25–200%，預設 60%）與範圍（畫面高度的 0–45%，預設 25%）可調。小鎮本身永遠清晰。可以關閉。
-- **切換桌面時顯示小鎮**（預設開啟）：切換桌面或開啟指揮中心時，macOS 有時會短暫露出系統桌布。開啟此選項後，ProjectTown 會把系統桌布換成最近一次的小鎮截圖，讓你看到的是小鎮。關閉此選項會換回你原本的桌布，結束 app 時也會；但若當時前景是全螢幕 app，macOS 只讓 ProjectTown 碰到那個 app 的空間，桌面會留著最後一張截圖，直到 ProjectTown 再次執行。鎖定畫面會顯示你原本的桌布：螢幕鎖定時 ProjectTown 會換回原本的桌布，解鎖後再換回小鎮。
+- **切換桌面時顯示小鎮**（預設開啟）：切換桌面或開啟指揮中心時，macOS 有時會短暫露出系統桌布。開啟此選項後，ProjectTown 會把小鎮所在螢幕的每個桌面一次換成最近一次的小鎮截圖，讓你看到的是小鎮，連還沒切過去的桌面也一樣。動態桌布和空拍桌布也適用。關閉此選項會換回你原本的桌布（包括動態和空拍桌布），結束 app 時也會。鎖定畫面會顯示你原本的桌布：螢幕鎖定時 ProjectTown 會換回原本的桌布，解鎖後再換回小鎮。為了一次處理所有桌面，ProjectTown 會修改 macOS 自己的桌布設定（`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`）並重啟系統的桌布程式，所以這時所有螢幕的桌布會重畫一次。如果未來的 macOS 改了這個檔案，ProjectTown 會退回只處理目前的桌面。
   若你同時使用其他會自動更換桌布的工具（動態或影片桌布 app、輪播桌布，包括系統設定裡的自動輪播、捷徑或腳本自動化），請不要讓它們管理小鎮所在的螢幕，或關閉此選項。兩邊會輪流改寫同一個系統桌布，結果可能露出錯的桌布，ProjectTown 換回的「原本桌布」也可能不是你要的那張。ProjectTown 只記得當時顯示的那一張圖，所以輪播桌布換回後不會繼續輪播。
 
 **省資源**
@@ -150,7 +150,7 @@ ProjectTown 每秒讀取一次 `~/.claude/sessions/*.json`。Claude Code 會為�
 - 一切都在你的 Mac 上進行。唯一的網路連線是檢查更新：ProjectTown 每天向 GitHub 查詢一次最新版本（`api.github.com`），你選擇更新時才從 GitHub 下載。不會傳送任何關於你或你的 session 的資料。可在設定 → 一般關閉。
 - 只讀取 `~/.claude/sessions/*.json`（session ID、工作目錄、狀態、名稱與時間戳記）和自己的設定檔。從不讀取你的對話、提示或逐字紀錄，也從不寫入 `~/.claude`。
 - 桌布上的 session 名稱預設隱藏（設定 → 狀態 → 隱藏 session 名稱）。
-- 設定存放在 `~/Library/Application Support/ProjectTown/config.json`。桌布截圖，以及每個桌面原本桌布的紀錄，存放在 `~/Library/Application Support/ProjectTown/Wallpaper/`。超過一週沒出現的桌面或螢幕，其截圖會被刪除。
+- 設定存放在 `~/Library/Application Support/ProjectTown/config.json`。桌布截圖，以及每個桌面原本桌布的紀錄，存放在 `~/Library/Application Support/ProjectTown/Wallpaper/`。開啟 **切換桌面時顯示小鎮** 時，ProjectTown 也會修改 macOS 桌布設定（`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`）裡的桌布項目，不動檔案裡的其他內容。超過一週沒出現的桌面或螢幕，其截圖會被刪除。
 
 ## 已知限制
 

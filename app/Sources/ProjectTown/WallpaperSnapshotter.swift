@@ -15,12 +15,19 @@ import os
 /// The lock screen shows each display's wallpaper, so locking puts the user's own wallpapers back until unlocked.
 /// Never puts a wallpaper back on a full-screen Space, and waits while displays come and go: macOS moves Spaces between
 /// displays then, and a Space reporting one of our files is not necessarily the one we set it on.
+///
+/// `NSWorkspace` reaches only the current Space, so a Space not visited since its wallpaper changed would still flash
+/// it, and it cannot put back dynamic or aerial wallpapers. Where the system's wallpaper store can be read
+/// (`WallpaperStoreIndex`), every Space of the town's display is covered at once and each one's choice is kept there,
+/// aerial wallpapers included; putting back goes through the store too. Both restart WallpaperAgent.
 @MainActor
 final class WallpaperSnapshotter {
     private static let log = Logger(subsystem: "io.github.kevinyu1580.ProjectTown", category: "WallpaperSnapshotter")
     private static let directory = ConfigStore.defaultURL.deletingLastPathComponent()
         .appendingPathComponent("Wallpaper", isDirectory: true)
     private static let ledgerURL = directory.appendingPathComponent("slots.json")
+    private static let storeURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/com.apple.wallpaper/Store/Index.plist")
     /// Lets the scene draw after it became visible or changed look, and lets a Space switch settle.
     private static let settleDelay: Duration = .seconds(1.5)
     private static let refreshInterval: Duration = .seconds(300)
@@ -103,6 +110,8 @@ final class WallpaperSnapshotter {
     /// On quit: every screen whose current Space shows one of our snapshots gets its own wallpaper back.
     func restoreAll() {
         guard !ledger.isEmpty else { return }
+        if let index = WallpaperStoreIndex.load(from: Self.storeURL),
+           restoreStore(displays: WallpaperStoreIndex.displays(in: index)) { return }
         for screen in NSScreen.screens { restore(screen) }
     }
 
@@ -141,7 +150,13 @@ final class WallpaperSnapshotter {
     private func putBackOthers() {
         guard enabled || !ledger.isEmpty else { return }
         let town = enabled && !locked ? window.screen : nil
-        for screen in NSScreen.screens where screen != town { restore(screen) }
+        let townDisplay = town.flatMap(Displays.uuid(of:))
+        if let index = WallpaperStoreIndex.load(from: Self.storeURL),
+           restoreStore(displays: WallpaperStoreIndex.displays(in: index).filter { $0 != townDisplay }) {
+            // The store had our files on other displays and has them back; NSWorkspace would only see a stale state.
+        } else {
+            for screen in NSScreen.screens where screen != town { restore(screen) }
+        }
         if live { schedule(after: Self.settleDelay) }
     }
 
@@ -185,8 +200,9 @@ final class WallpaperSnapshotter {
     private func capture() async {
         let workspace = NSWorkspace.shared
         guard live, let screen = window.screen, let current = workspace.desktopImageURL(for: screen) else { return }
-        // A dynamic or aerial wallpaper could not be put back: leave that Space alone.
-        guard WallpaperSnapshotLedger.canRestore(current) else {
+        // NSWorkspace cannot put a dynamic or aerial wallpaper back; only the store can.
+        let restorable = WallpaperSnapshotLedger.canRestore(current)
+        guard restorable || WallpaperStoreIndex.load(from: Self.storeURL) != nil else {
             Self.log.debug("Skipped a snapshot: the wallpaper cannot be put back")
             return
         }
@@ -206,6 +222,10 @@ final class WallpaperSnapshotter {
         }
         guard generation == self.generation, let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
+        guard restorable else {
+            await coverAllSpaces(of: screen, with: cgImage)
+            return
+        }
 
         let options = workspace.desktopImageOptions(for: screen) ?? [:]
         let original = WallpaperSnapshotLedger.Original(
@@ -256,6 +276,72 @@ final class WallpaperSnapshotter {
             return
         }
         removeObsoleteFiles()
+        await coverAllSpaces(of: screen, with: cgImage)
+    }
+
+    /// Puts the snapshot on every Space of `screen` through the wallpaper store, keeping what each showed. Does nothing
+    /// once all of them show one of our files, so WallpaperAgent is restarted only after a change: the first snapshot,
+    /// a wallpaper the user picked, the town moving here, or an unlock.
+    private func coverAllSpaces(of screen: NSScreen, with image: CGImage) async {
+        guard let display = Displays.uuid(of: screen), let index = WallpaperStoreIndex.load(from: Self.storeURL),
+              !WallpaperStoreIndex.isCovered(index, display: display, isOurs: Self.isOurs) else { return }
+        // One file per display, apart from the slot files so cleanup never removes it; its Spaces all point here.
+        let file = Self.directory.appendingPathComponent("cover-\(display).jpg")
+        let width = Int((screen.frame.width * screen.backingScaleFactor).rounded())
+        let height = Int((screen.frame.height * screen.backingScaleFactor).rounded())
+        let written = await Task.detached(priority: .utility) {
+            Self.writeJPEG(image, width: width, height: height, to: file)
+        }.value
+        // Read the store again: WallpaperAgent may have written it meanwhile.
+        guard written, live, let latest = WallpaperStoreIndex.load(from: Self.storeURL),
+              let result = WallpaperStoreIndex.cover(latest, display: display, with: file, isOurs: Self.isOurs) else {
+            Self.log.error("Cannot cover the Spaces of \(display, privacy: .public)")
+            return
+        }
+        ledger.rememberStoreOriginals(result.originals)
+        do {
+            // The originals must be on disk before the store loses them.
+            try ledger.save(to: Self.ledgerURL)
+            try WallpaperStoreIndex.save(result.index, to: Self.storeURL)
+        } catch {
+            Self.log.error("Cannot cover the Spaces: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        Self.restartWallpaperAgent()
+        Self.log.info("Covered the Spaces of \(display, privacy: .public), \(result.originals.count) new originals")
+    }
+
+    /// Puts back what each Space of `displays` showed before, where it still shows one of our files. True when the
+    /// store changed.
+    @discardableResult
+    private func restoreStore(displays: Set<String>) -> Bool {
+        guard !displays.isEmpty, let index = WallpaperStoreIndex.load(from: Self.storeURL),
+              let restored = WallpaperStoreIndex.restore(
+                  index, displays: displays, originals: ledger.storeOriginals, isOurs: Self.isOurs,
+                  fallback: { ledger.original(toRestore: $0, in: Self.directory)?.url }
+              ) else { return false }
+        do {
+            try WallpaperStoreIndex.save(restored, to: Self.storeURL)
+        } catch {
+            Self.log.error("Cannot restore the wallpaper store: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+        Self.restartWallpaperAgent()
+        return true
+    }
+
+    private static func isOurs(_ url: URL) -> Bool {
+        WallpaperSnapshotLedger.isOurs(url, in: directory)
+    }
+
+    /// WallpaperAgent reads its store only when it starts; launchd starts it again right away.
+    private static func restartWallpaperAgent() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
+        process.arguments = ["WallpaperAgent"]
+        do { try process.run() } catch {
+            log.error("Cannot restart WallpaperAgent: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     /// Keeps the current and the previous snapshot of each slot, and none of a slot without a snapshot for a week.

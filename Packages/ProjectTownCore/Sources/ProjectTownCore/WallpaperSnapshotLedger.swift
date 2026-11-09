@@ -24,12 +24,29 @@ public struct WallpaperSnapshotLedger: Codable, Sendable, Equatable {
 
     /// Slot → the wallpaper that Space had before our first snapshot.
     public private(set) var originals: [Int: Original]
+    /// `WallpaperStoreIndex.Entry.id` → that entry's content before the town covered it (binary plist). Unlike
+    /// `originals`, this also keeps dynamic and aerial wallpapers.
+    public private(set) var storeOriginals: [String: Data]
 
-    public init(originals: [Int: Original] = [:]) {
+    public init(originals: [Int: Original] = [:], storeOriginals: [String: Data] = [:]) {
         self.originals = originals
+        self.storeOriginals = storeOriginals
     }
 
-    public var isEmpty: Bool { originals.isEmpty }
+    private enum CodingKeys: String, CodingKey { case originals, storeOriginals }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        originals = try c.decode([Int: Original].self, forKey: .originals)
+        storeOriginals = try c.decodeIfPresent([String: Data].self, forKey: .storeOriginals) ?? [:]
+    }
+
+    public var isEmpty: Bool { originals.isEmpty && storeOriginals.isEmpty }
+
+    /// Remembers what the store entries showed before they were covered; replaces older originals of the same entry.
+    public mutating func rememberStoreOriginals(_ newOriginals: [String: Data]) {
+        storeOriginals.merge(newOriginals) { _, new in new }
+    }
 
     public static func fileName(slot: Int, serial: Int64) -> String {
         "town-\(slot)-\(serial).jpg"
@@ -44,11 +61,14 @@ public struct WallpaperSnapshotLedger: Codable, Sendable, Equatable {
         return (slot, serial)
     }
 
+    /// Whether `url` is a file in `directory`, such as a snapshot or the cover file.
+    public static func isOurs(_ url: URL, in directory: URL) -> Bool {
+        url.isFileURL && url.deletingLastPathComponent().resolvingSymlinksInPath().path == directory.resolvingSymlinksInPath().path
+    }
+
     /// The slot of `url` when it is one of our snapshot files in `directory` (the file need not exist any more).
     public static func slot(of url: URL, in directory: URL) -> Int? {
-        guard url.isFileURL,
-              url.deletingLastPathComponent().resolvingSymlinksInPath().path == directory.resolvingSymlinksInPath().path
-        else { return nil }
+        guard isOurs(url, in: directory) else { return nil }
         return parse(fileName: url.lastPathComponent)?.slot
     }
 
@@ -67,9 +87,10 @@ public struct WallpaperSnapshotLedger: Codable, Sendable, Equatable {
         return (slot, true)
     }
 
-    /// What to put back when a Space shows `url`: its slot's original if `url` is ours, nil otherwise.
+    /// What to put back when a Space shows `url`: its slot's original if `url` is ours, nil otherwise. A slot taken
+    /// over from the cover file has no original of its own (the store keeps it), so it gives nil too.
     public func original(toRestore url: URL, in directory: URL) -> Original? {
-        Self.slot(of: url, in: directory).flatMap { originals[$0] }
+        Self.slot(of: url, in: directory).flatMap { originals[$0] }.flatMap { Self.isOurs($0.url, in: directory) ? nil : $0 }
     }
 
     /// How long a slot keeps its snapshots after the newest one: a Space or display not seen for that long (or gone)

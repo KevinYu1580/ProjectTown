@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Switching desktops no longer flashes your own wallpaper on a desktop you had not visited since its wallpaper changed (for example after picking a new wallpaper for all desktops, or after the town moved to another display). **Show the town while switching desktops** now puts the snapshot on every desktop of the town's display at once.
+- **Show the town while switching desktops** now works with dynamic and aerial wallpapers too, and puts them back when it is turned off, on quit and on the lock screen. Before, desktops with such a wallpaper were skipped and kept flashing.
+- Quitting while a full-screen app is in front now puts your wallpapers back too.
+
 ## [1.4.0] - 2026-11-08
 
 ### Added
