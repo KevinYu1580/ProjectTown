@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { DRAWN_ON_TOP } from '../postfx'
+import { markOverlay } from '../overlay'
 import { PX } from './effects'
 
 const CSS_W = 440
@@ -28,6 +29,7 @@ export class NameLabel {
       new THREE.SpriteMaterial({ map: this.texture, transparent: true, fog: false, sizeAttenuation: false, ...DRAWN_ON_TOP }),
     )
     this.sprite.center.set(0.5, 0)
+    markOverlay(this.sprite)
     this.setUnit(1)
     this.sprite.renderOrder = 1003 // over every symbol and sign (sign.ts)
   }

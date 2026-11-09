@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The lock screen shows the town too, instead of your own wallpaper. Locking and unlocking used to switch the wallpaper twice; now nothing changes. The building signs, with your project names, are visible on the lock screen; turn off **Show the town while switching desktops** to keep them off it.
+- The lock screen shows the town too, instead of your own wallpaper. Locking and unlocking used to switch the wallpaper twice; now nothing changes.
+- The wallpaper snapshot holds only the 3D town, without signs, name labels, state symbols (gear, "!", fireworks, green ring, zZ) or the HUD, so the lock screen shows no project names or session states.
 
 ### Fixed
 

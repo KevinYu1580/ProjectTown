@@ -49,6 +49,8 @@ final class WallpaperSnapshotter {
     private var screensSettling: Task<Void, Never>?
     /// Bumped when the Space, screen or activity changes, so a capture in flight is never set on the wrong Space.
     private var generation = 0
+    /// Whether the cover file was redrawn since launch; one written by an older version may still show the signs.
+    private var coverRedrawn = false
 
     private var live: Bool { enabled && active && !locked && screensSettling == nil }
 
@@ -228,15 +230,7 @@ final class WallpaperSnapshotter {
             return
         }
 
-        let image: NSImage
-        do {
-            image = try await webView.takeSnapshot(configuration: nil)
-        } catch {
-            Self.log.error("Snapshot failed: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-        guard generation == self.generation, let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        else { return }
+        guard let cgImage = await townWithoutText(), generation == self.generation else { return }
         // Keep what the Space on screen shows before the snapshot replaces it, aerial wallpapers included.
         var keptOriginals = false
         if let store, !onScreen.isEmpty {
@@ -301,6 +295,11 @@ final class WallpaperSnapshotter {
             return
         }
         removeObsoleteFiles()
+        if !coverRedrawn, !display.isEmpty, FileManager.default.fileExists(atPath: Self.coverFile(for: display).path) {
+            coverRedrawn = true
+            let cover = Self.coverFile(for: display)
+            _ = await Task.detached(priority: .utility) { Self.writeJPEG(cgImage, width: width, height: height, to: cover) }.value
+        }
         // The other Spaces of this display that do not show the town yet: never covered, a wallpaper picked for every
         // Space, the town moved here. The Space on screen was just set, whatever the store says about it so far.
         if let store, !display.isEmpty,
@@ -308,6 +307,26 @@ final class WallpaperSnapshotter {
                                           ignoring: Set(onScreen.map(\.id)), isOurs: Self.isOurs) {
             await coverAllSpaces(of: screen, with: cgImage, spaces: spaces?.desktops)
         }
+    }
+
+    /// The town as the scene draws it for the wallpaper: the 3D model without signs and name labels, which the lock
+    /// screen would otherwise show to anyone. Nil before the scene's first frame or when it cannot draw.
+    private func townWithoutText() async -> CGImage? {
+        let url: String? = await withCheckedContinuation { continuation in
+            webView.callAsyncJavaScript("return window.projectTown?.snapshot() ?? null", arguments: [:], in: nil,
+                                        in: .page) { result in
+                switch result {
+                case .success(let value): continuation.resume(returning: value as? String)
+                case .failure(let error):
+                    Self.log.error("Snapshot failed: \(error.localizedDescription, privacy: .public)")
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+        guard let url, let comma = url.firstIndex(of: ","),
+              let data = Data(base64Encoded: String(url[url.index(after: comma)...])),
+              let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
     /// Puts the snapshot on the desktops of `screen` (all its Spaces in the store when `spaces` is unknown) through the

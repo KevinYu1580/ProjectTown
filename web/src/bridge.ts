@@ -38,5 +38,6 @@ export function installBridge(app: TownApp): void {
     setCameraPreset: (i) => app.setCameraPreset(i),
     resetCamera: () => app.resetCamera(),
     reload: () => location.reload(),
+    snapshot: () => app.snapshot(),
   }
 }
