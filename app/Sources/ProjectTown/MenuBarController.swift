@@ -59,8 +59,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     }
 
     @objc private func installUpdate() {
-        guard case .available(let offer) = updater.status else { return }
-        Task { await updater.install(offer) }
+        guard case .available = updater.status else { return }
+        Task { await updater.install() }
     }
 
     @objc private func openSupport() {

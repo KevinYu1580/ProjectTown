@@ -86,7 +86,7 @@ struct GeneralTab: View {
                 Text(String(localized: "Version \(offer.version) is available."))
                 Link(String(localized: "What’s new"), destination: offer.pageURL)
                 Spacer()
-                Button(String(localized: "Update and Restart")) { Task { await updater.install(offer) } }
+                Button(String(localized: "Update and Restart")) { Task { await updater.install() } }
             }
         case .installing:
             HStack {
