@@ -2,13 +2,18 @@
 
 **English** | [繁體中文](README.zh-Hant.md)
 
+> [!TIP]
+> **☕ Support ProjectTown**
+>
+> ProjectTown is free and open source, with no paid version. If it brightens your desktop, you can [buy me a coffee on Ko-fi](https://ko-fi.com/kevinyu1580) to keep it growing. The same link is in the menu bar menu and in Settings → General.
+>
+> [![Support me on Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/kevinyu1580)
+
 A macOS live wallpaper that turns your Claude Code sessions into a tiny voxel town.
 
 ![ProjectTown during the day](docs/screenshots/busy-day.png)
 
 **Supported languages: 繁體中文, English** (the app follows your macOS language; see [Language](#language))
-
-ProjectTown is free and open source. If you enjoy it, you can [buy me a coffee on Ko-fi](https://ko-fi.com/kevinyu1580) ☕
 
 Each project folder you add becomes a building. Each Claude Code session working in that folder becomes a little person in front of it, and what the person does shows the session's state. You can see at a glance which project needs you.
 
@@ -177,10 +182,6 @@ Changes reach `main` only through pull requests; direct pushes are blocked. Run 
 CI runs on GitHub Actions (`.github/workflows/ci.yml`): a `web` job (typecheck, lint, unit tests, e2e) and a `swift` job (`swift test`, `xcodegen`, `xcodebuild build`). The `swift` job only runs when Swift-related files change (`app/**`, `Packages/**`, `project.yml`, `Makefile`, `.github/workflows/**`).
 
 The pull requests from before the move to this repository (2026-11-08) are kept in [docs/pull-requests-archive.md](docs/pull-requests-archive.md).
-
-## Support
-
-ProjectTown is free and open source, with no paid version. If it brightens your desktop, you can [buy me a coffee on Ko-fi](https://ko-fi.com/kevinyu1580) to keep it growing. The same link is in the menu bar menu and in Settings → General.
 
 ## Disclaimer
 

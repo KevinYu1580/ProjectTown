@@ -2,13 +2,18 @@
 
 [English](README.md) | **繁體中文**
 
+> [!TIP]
+> **☕ 贊助 ProjectTown**
+>
+> ProjectTown 完全免費且開源，沒有付費版。如果它讓你的桌面多了點樂趣，歡迎[到 Ko-fi 請我喝杯咖啡](https://ko-fi.com/kevinyu1580)，支持小鎮繼續長大。menubar 選單和設定 → 一般裡也找得到這個連結。
+>
+> [![到 Ko-fi 贊助](https://img.shields.io/badge/Ko--fi-請我喝杯咖啡-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/kevinyu1580)
+
 把你的 Claude Code session 變成一座 voxel 小鎮的 macOS 動態桌布。
 
 ![白天的 ProjectTown](docs/screenshots/busy-day.png)
 
 **支援語言：繁體中文、English**（跟隨 macOS 語言，見[語言](#語言)）
-
-ProjectTown 完全免費且開源。如果你喜歡，歡迎[到 Ko-fi 請我喝杯咖啡](https://ko-fi.com/kevinyu1580) ☕
 
 你加入的每個專案資料夾都會變成一棟建築；在該資料夾裡工作的每個 Claude Code session 都會變成建築前的一個小人，小人在做什麼就代表 session 的狀態。哪個專案在等你，一眼就看得出來。
 
@@ -177,10 +182,6 @@ make app
 CI 跑在 GitHub Actions（`.github/workflows/ci.yml`）：`web` job（typecheck、lint、單元測試、e2e）與 `swift` job（`swift test`、`xcodegen`、`xcodebuild build`）。`swift` job 只在 Swift 相關檔案變更時執行（`app/**`、`Packages/**`、`project.yml`、`Makefile`、`.github/workflows/**`）。
 
 搬到這個 repo（2026-11-08）之前的 pull request 保存在 [docs/pull-requests-archive.md](docs/pull-requests-archive.md)。
-
-## 贊助
-
-ProjectTown 完全免費且開源，沒有付費版。如果它讓你的桌面多了點樂趣，歡迎[到 Ko-fi 請我喝杯咖啡](https://ko-fi.com/kevinyu1580)，支持小鎮繼續長大。menubar 選單和設定 → 一般裡也找得到這個連結。
 
 ## 免責聲明
 
