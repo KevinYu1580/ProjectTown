@@ -69,15 +69,11 @@ final class Updater: ObservableObject {
         }
         status = .checking
         do {
-            var request = URLRequest(url: latestReleaseURL, cachePolicy: .reloadIgnoringLocalCacheData)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.badResponse }
-            if let offer = try UpdateOffer.from(latestRelease: data, currentVersion: currentVersion) {
+            if let offer = try await latestOffer() {
                 Self.log.info("Update \(offer.version, privacy: .public) is available")
                 status = .available(offer)
                 #if DEBUG
-                if ProcessInfo.processInfo.environment["PROJECTTOWN_UPDATE_AUTO_INSTALL"] == "1" { await install(offer) }
+                if ProcessInfo.processInfo.environment["PROJECTTOWN_UPDATE_AUTO_INSTALL"] == "1" { await install() }
                 #endif
             } else {
                 status = .upToDate
@@ -88,10 +84,15 @@ final class Updater: ObservableObject {
         }
     }
 
-    func install(_ offer: UpdateOffer) async {
+    /// Asks for the latest release again first, so a release that came out since the last check is the one installed.
+    func install() async {
         guard status != .installing else { return }
         status = .installing
         do {
+            guard let offer = try await latestOffer() else {
+                status = .upToDate
+                return
+            }
             let app = Bundle.main.bundleURL
             guard FileManager.default.isWritableFile(atPath: app.deletingLastPathComponent().path) else { throw UpdateError.notWritable }
             async let zipDownload = download(offer.zipURL)
@@ -137,6 +138,15 @@ final class Updater: ObservableObject {
         default:
             String(localized: "The update could not be installed. Check your internet connection and try again.")
         }
+    }
+
+    /// The latest release on GitHub, or nil when it is not newer than this app.
+    private func latestOffer() async throws -> UpdateOffer? {
+        var request = URLRequest(url: latestReleaseURL, cachePolicy: .reloadIgnoringLocalCacheData)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw UpdateError.badResponse }
+        return try UpdateOffer.from(latestRelease: data, currentVersion: currentVersion)
     }
 
     private func download(_ url: URL) async throws -> Data {

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-11-09
+
+### Fixed
+
+- Installing an update now always installs the newest release. Before, it installed the version the last check had found, so a release that came out since then (checks run once a day) took a second update to reach.
+
 ## [1.5.1] - 2026-11-09
 
 ### Changed
