@@ -74,7 +74,7 @@ When a session ends, its person walks out to the road and off the map.
 
 ### Updates
 
-You only do this once. ProjectTown checks GitHub for a new release once a day; when one is out, choose **Update to X.Y.Z and Restart** from the menu bar menu (or Settings → General). It downloads the release, checks its signature, moves the old app to the Trash and restarts, with no download or quarantine step for you. Turn off **Check for updates automatically** in Settings → General if you prefer to update by hand. Versions before 1.4.0 cannot update themselves; install 1.4.0 by hand once.
+You only do this once. ProjectTown checks GitHub for a new release once a day; when one is out, choose **New Version Available! Install and Restart** from the menu bar menu, or **Update and Restart** in Settings → General. It downloads the release, checks its signature, moves the old app to the Trash and restarts, with no download or quarantine step for you. Turn off **Check for updates automatically** in Settings → General if you prefer to update by hand. Versions before 1.4.0 cannot update themselves; install 1.4.0 by hand once.
 
 ## Usage
 

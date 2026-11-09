@@ -833,6 +833,22 @@
         }
       }
     },
+    "New Version Available! Install and Restart" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Version Available! Install and Restart"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有新版本！安裝並重新啟動"
+          }
+        }
+      }
+    },
     "No projects yet. Click + to add a folder." : {
       "localizations" : {
         "en" : {
@@ -1645,22 +1661,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更新並重新啟動"
-          }
-        }
-      }
-    },
-    "Update to %@ and Restart" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Update to %@ and Restart"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "更新到 %@ 並重新啟動"
           }
         }
       }
